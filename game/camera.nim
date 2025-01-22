@@ -67,25 +67,24 @@ proc newThirdPersonCamera*(target, position: Vec3, minDistance, maxDistance: flo
     distance = length(position-target)
   ThirdPersonCamera(position: position, u: u, v: v, w: w, fulcrum: fulcrum, target: target, distance: distance, minDistance: minDistance, maxDistance: maxDistance)
 
+proc updatePosition(c: var ThirdPersonCamera) = c.position = c.target + c.w * c.distance
+
 proc orbit*(c: var ThirdPersonCamera, dx: float) =
-  let previousY = c.position.y
-  c.position = c.position + c.u * dx * ([1'f32, 1, 1].Vec3 - UP)
+  let previousWY = c.w.y
+  c.position = c.position + c.u * dx
   c.w = norm(c.position - c.target)
+  c.w = [c.w.x, previousWY, c.w.z] # Fix errors introduced by numerical imprecision
   c.u = cross(UP, c.w).norm()
   c.v = cross(c.w, c.u).norm()
-  c.position = c.target + c.w * c.distance # Correct for numerical errors messing with distance
-  c.position = [c.position.x, previousY, c.position.z] # Correct for numerical errors messing with height
+  c.updatePosition()
 
 proc zoom*(c: var ThirdPersonCamera, dw: float) =
-  let
-    newPosition = c.position - c.w * dw
-    newDistance = length(newPosition - c.target)
-
+  let newDistance = c.distance - dw
   if newDistance < c.distance and newDistance <= c.minDistance: return # Don't get closer if we're maximally close already
   if newDistance > c.distance and newDistance >= c.maxDistance: return # Don't get farther if we're maximally far already
-  c.position = newPosition
   c.distance = newDistance
+  c.updatePosition()
 
 proc followPlayer*(c: var ThirdPersonCamera, player: Vec3) =
   c.target = player
-  c.position = c.target + c.w * c.distance
+  c.updatePosition()

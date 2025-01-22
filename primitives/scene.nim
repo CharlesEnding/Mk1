@@ -1,6 +1,6 @@
 import std/[tables, strutils]
 
-import ../camera
+import ../game/camera
 import ../utils/obj
 import material
 import model

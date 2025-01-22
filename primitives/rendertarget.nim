@@ -1,4 +1,4 @@
-import ../camera
+import ../game/camera
 import ../utils/bogls
 
 import opengl

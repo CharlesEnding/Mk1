@@ -2,7 +2,7 @@ import opengl
 
 import ../utils/blas
 import ../utils/bogls
-import ../camera
+import ../game/camera
 
 type
   Light* = ref object

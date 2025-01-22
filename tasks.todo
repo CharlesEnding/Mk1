@@ -65,6 +65,7 @@ Intermediary tasks:
     ☐ Grid -> triangles for scene
       ☐ Intercepts ray + walls grid
     ☐ Disks for characters
+  ☐ Move resolution out of Camera
 
 
 Jalons:

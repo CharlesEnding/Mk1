@@ -5,12 +5,11 @@ import std/tables
 import opengl
 import glfw
 
-import camera
 import controller
 import primitives/[scene, rendertarget, light, material, mesh]
 import utils/[blas, obj]
 import physics/collision
-import game/player
+import game/[player, camera]
 
 var
   fulcrum: Fulcrum = Fulcrum(near: 0.1, far: 10, fov: 35, aspectRatio: 1280 // 800)
@@ -18,9 +17,11 @@ var
   # playerCamera: Camera = newCamera([-30'f32, 2, -20], [0'f32, 0, 0], [0'f32, 1, 0], fulcrum)
   # playerCamera: Camera = newCamera([35'f32, 2, -20], [0'f32, 0, 0], [0'f32, 1, 0], fulcrum)
   # playerCamera: Camera = newCamera([43'f32, 3, -23], [0'f32, 0, 0], [0'f32, 1, 0], fulcrum) # Test water and light
-  playerCamera: Camera = newCamera([-20'f32, 125, -6], [0'f32, 0, 0], [0'f32, 1, 0], fulcrum) # Test shadows
+  # playerCamera: Camera = newCamera([-20'f32, 125, -6], [0'f32, 0, 0], [0'f32, 1, 0], fulcrum) # Test shadows
+  # playerCamera: Camera = newThirdPersonCamera([-20'f32, 125, -6], [0'f32, 0, 0], [0'f32, 1, 0], fulcrum) # Test shadows
   # playerCamera: Camera = newCamera([-30'f32, 20, -30], [0'f32, 0, 0], [0'f32, 1, 0], fulcrum)
   # playerCamera: Camera = newCamera([-20'f32, 4, -4], [0'f32, 0, 0], [0'f32, 1, 0], fulcrum)
+  playerCamera: ThirdPersonCamera
   resolution = Resolution(nx: 1280, ny: 800)
   # mainLight: Light = newLight([90'f32, 70, -110].Vec3, [0.98'f32, 0.77, 0.51].Vec3, 700.0)
   mainLight: Light = newLight([60'f32, 80, -80].Vec3, [0.98'f32, 0.77, 0.51].Vec3, 700.0)
@@ -74,11 +75,14 @@ proc init(): Window =
   mplayer.speed = [1'f32, 0, 1].Vec3
   rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet)
 
-  playerCamera.minDistance = 3.0
-  playerCamera.maxDistance = 16.0
-  playerCamera.updateOrbitalBasis(playerCamera.origin, mplayer.position + [0'f32, 1.6, 0].Vec3)
-  playerCamera.origin = [0'f32, 5, -4].Vec3
-  playerCamera.updateOrbitalBasis(playerCamera.origin, mplayer.position + [0'f32, 1.6, 0].Vec3)
+  playerCamera = newThirdPersonCamera(
+    target      = mplayer.position + [0'f32, 1.6, 0].Vec3,
+    position    = [0'f32, 5, -4].Vec3,
+    minDistance = 3.0,
+    maxDistance = 16.0,
+    fulcrum     = fulcrum
+  )
+
   controller.setup(win, playerCamera, mainLight, mplayer, collisionSystem)
 
   return win
@@ -89,21 +93,22 @@ proc update(win: Window, depthTarget: RenderTarget) =
   glClear(GL_DEPTH_BUFFER_BIT)
   glEnable(GL_CULL_FACE)
   glCullFace(GL_FRONT)
-  rootScene.drawDepth(playerCamera, mainLight, resolution)
+  rootScene.drawDepth(playerCamera.Camera, mainLight, resolution)
   glCullFace(GL_BACK)
   glDisable(GL_CULL_FACE)
 
   glViewport(0, 0, GLsizei(1280), GLsizei(800))
   targetDefault()
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-  rootScene.draw(playerCamera, mainLight, resolution, depthTarget)
+  rootScene.draw(playerCamera.Camera, mainLight, resolution, depthTarget)
 
   rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet)
-  playerCamera.updateOrbitalBasis(playerCamera.origin, mplayer.position + [0'f32, 1.6, 0].Vec3)
+  # playerCamera.updateOrbitalBasis(playerCamera.origin, mplayer.position + [0'f32, 1.6, 0].Vec3)
   # playerCamera.origin = [0'f32, 5, -4].Vec3
   # playerCamera.updateOrbitalBasis(playerCamera.origin, mplayer.position + [0'f32, 1.6, 0].Vec3)
 
   # echo mplayer.position
+  playerCamera.followPlayer(mplayer.position + [0'f32, 1.6, 0].Vec3)
 
 
   glfw.swapBuffers(win)

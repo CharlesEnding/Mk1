@@ -1,0 +1,78 @@
+
+Architecture:
+  A scene:
+    has models.
+    has shader programs.
+  A material:
+    has parameters.
+    has textures.
+  A model:
+    has meshes.
+    has materials.
+    has transforms.
+    has meshes to material.
+  A mesh:
+    has vertices.
+    has a material.
+    has a texture.
+
+Uniforms, textures
+
+
+Tasks:
+ ✔ Obj parser @done (25-01-15 18:38)
+ ✔ Mtl parser @done (25-01-17 12:24)
+ ✔ Mesh @done (25-01-17 13:17)
+ ☐ Camera
+ ✔ Skybox @done (25-01-17 13:17)
+ ☐ Water
+ ☐ Lights and shadows
+ ☐ Folliage
+ ☐ Collision
+ ☐ Controls
+ ☐ Animation
+ ☐ Particles
+ ☐ UI
+ ☐ NPCs
+ ☐ Sounds
+ ☐ Music
+ ☐ Inventory
+ ☐ Multiplayer
+ ☐ Fog
+ ☐ Lens flare
+
+Intermediary tasks:
+  ✔ Implement render targets @done (25-01-19 12:27)
+  ☐ Camera pos uniform
+  ☐ Camera collision
+  ☐ Fog
+  ☐ Water refraction
+  ☐ Clean Shader/Material/Scene system
+  ☐ Implement projective shadows
+  ☐ Restrict shadows to specific mesh
+    ☐ caster
+    ☐ receiver (not walls or water)
+    ☐ perspective
+  ☐ Character shadows
+  ☐ Light position
+  ✔ Shadows @done (25-01-19 12:27)
+  ✔ Light primitive @done (25-01-19 12:27)
+  ☐ Water specular highlights (highlights or contrast w/ shadows? Or reflections?)
+  ☐ Inverted faces leading to bad normals
+  ✔ Shader for sky @done (25-01-19 03:54)
+  ✔ Shader for transparent meshes @done (25-01-19 03:54)
+  ☐ Collision
+    ☐ Grid -> triangles for scene
+      ☐ Intercepts ray + walls grid
+    ☐ Disks for characters
+
+
+Jalons:
+ ✔ Model is loaded @done (25-01-19 03:03)
+ ✔ Scene is lit @done (25-01-19 03:03)
+ ✔ Water is shaded @done (25-01-19 03:03)
+ ☐ Character is animated
+ ☐ Character can move
+
+An eye rolling around the character's base on the ground indicates the way he's looking
+We can call out to players to get their attention

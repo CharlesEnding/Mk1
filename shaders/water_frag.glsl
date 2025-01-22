@@ -1,0 +1,38 @@
+#version 330 core
+
+layout(location = 0) out vec4 fragmentColor;
+
+in vec2 UV;
+in float out_time;
+
+uniform sampler2D albedo;
+
+vec3 distort(vec2 uvs, float time, float phaseOffset) {
+  float progress = fract(time/10.0 + phaseOffset);
+  vec2 distortedUVs = uvs - progress * 0.05; //vec2(flowSample.r * time + uvs.r, flowSample.g * time + uvs.g);
+  float blendWeight = 1 - abs(1 - 2 * progress);
+  return vec3(distortedUVs.x, distortedUVs.y, blendWeight);
+}
+
+void main()
+{
+  vec3 flowStep1 = distort(UV, out_time, 0);
+  vec3 flowStep2 = distort(UV, out_time, 0.5);
+
+  vec4 texSample1 = texture(albedo, flowStep1.rg) * flowStep1.z;
+  vec4 texSample2 = texture(albedo, flowStep2.rg) * flowStep2.z;
+
+  // fragmentColor = texSample1 + texSample2;
+  //fragmentColor = texSample1;
+  //float blendWeight = 1 - abs(1 - 2 * fract(timeOut));
+  //fragmentColor = mix(texSample2, texSample1, blendWeight);
+  //fragmentColor = vec4(flow.r, flow.g, 0.0, 1.0);
+  //fragmentColor = texSample1;
+
+  vec4 sample1 = 0.25*texture(albedo, vec2(UV.x, UV.y + out_time*0.2));
+  vec4 sample2 = 0.25*texture(albedo, vec2(UV.x - out_time*0.1, UV.y));
+
+  fragmentColor = sample1 + sample2;
+  //fragmentColor = vec4(UV.x, UV.y, 0.0, 1.0);
+  //fragmentColor = mix(gLowColour, gHighColour, height);
+}

@@ -10,7 +10,7 @@ import utils/blas
 import game/camera
 import primitives/light
 import game/player
-import physics/collision
+# import physics/collision
 
 
 var
@@ -18,7 +18,7 @@ var
   lastMove: float
   mainLight: Light
   mplayer: Player
-  collider: CollisionSystem
+  # collider: CollisionSystem
 
 proc keyCb(w: Window, key: Key, scanCode: int32, action: KeyAction,
     mods: set[ModifierKey]) =
@@ -31,7 +31,7 @@ proc keyCb(w: Window, key: Key, scanCode: int32, action: KeyAction,
       of "left":  delta = -playerCamera.u * mplayer.speed
       of "right": delta =  playerCamera.u * mplayer.speed
     mplayer.position = mplayer.position + delta
-    mplayer.position = [mplayer.position.x, collider.getHeight(mplayer.position).y, mplayer.position.z]
+    # mplayer.position = [mplayer.position.x, collider.getHeight(mplayer.position).y, mplayer.position.z]
 
 var
   lastMouseX: float64 = 0
@@ -74,11 +74,11 @@ proc zoomCallback(window: Window, offset: tuple[x,y: float64]) =
   playerCamera.zoom(offset.y)
 
 # proc setup*(window: Window, cam: Camera, chara: Player) =
-proc setup*(window: Window, cam: ThirdPersonCamera, light: Light, mmplayer: Player, mcollision: CollisionSystem) =
+proc setup*(window: Window, cam: ThirdPersonCamera, light: Light, mmplayer: Player)=#, mcollision: CollisionSystem) =
   playerCamera = cam
   mainLight = light
   mplayer = mmplayer
-  collider = mcollision
+  # collider = mcollision
   window.keyCb            = keyCb
   window.mouseButtonCb    = mouseClickCallback
   window.cursorPositionCb = mouseMoveCallback

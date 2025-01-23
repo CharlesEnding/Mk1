@@ -64,6 +64,10 @@ proc `*`*[N, T](a, b: Vec[N, T]): Vec[N, T] {.inline.} =
   for i in 0..<N:
     result[i] = a[i] * b[i]
 
+proc `/`*[N, T](a, b: Vec[N, T]): Vec[N, T] {.inline.} =
+  for i in 0..<N:
+    result[i] = a[i] / b[i]
+
 proc `@`*[N, T](a, b: Vec[N, T]): T {.inline.} =
   for i in 0..<N:
     result += a[i]*b[i]
@@ -99,6 +103,14 @@ proc norm*[N, T](v: Vec[N, T]): Vec[N, T] {.inline.} =
 
 proc lerp*[N, T](v0, v1: Vec[N, T], t: T): Vec[N, T] {.inline.} =
   return (1 - t) * v0 + t * v1
+
+proc min*[N, T](v0, v1: Vec[N, T]): Vec[N, T] {.inline.} =
+  for i in 0..<N:
+    result[i] = min(v0[i], v1[i])
+
+proc max*[N, T](v0, v1: Vec[N, T]): Vec[N, T] {.inline.} =
+  for i in 0..<N:
+    result[i] = max(v0[i], v1[i])
 
 
 #proc pad*[N, T](v: Vec[N, T]): Vec[N+1, T] {.inline.} =

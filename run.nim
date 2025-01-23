@@ -27,6 +27,7 @@ var
   mainLight: Light = newLight([60'f32, 80, -80].Vec3, [0.98'f32, 0.77, 0.51].Vec3, 700.0)
   rootScene: Scene
   mplayer: Player = new Player
+  BVH: Node
 
 proc init(): Window =
   glfw.initialize()
@@ -69,9 +70,9 @@ proc init(): Window =
 
   rootScene.models[^1].transform = translationMatrix([0'f32, 10, 0].Vec3)
 
-  var collisionSystem = newCollisionSystem("assets/MacAnu", "MacAnu_collison.obj", 30.Positive)
+  BVH = buildTree("assets/MacAnu", "MacAnu_collison.obj", 10)
   mplayer.feet = rootScene.models[^1].meshes[0].getFeet()
-  mplayer.position = collisionSystem.getHeight(mplayer.feet)
+  mplayer.position = BVH.getHeight(mplayer.feet)
   mplayer.speed = [1'f32, 0, 1].Vec3
   rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet)
 
@@ -83,7 +84,7 @@ proc init(): Window =
     fulcrum     = fulcrum
   )
 
-  controller.setup(win, playerCamera, mainLight, mplayer, collisionSystem)
+  controller.setup(win, playerCamera, mainLight, mplayer)#, collisionSystem)
 
   return win
 
@@ -102,6 +103,7 @@ proc update(win: Window, depthTarget: RenderTarget) =
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
   rootScene.draw(playerCamera.Camera, mainLight, resolution, depthTarget)
 
+  mplayer.position = BVH.getHeight(mplayer.position)
   rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet)
   # playerCamera.updateOrbitalBasis(playerCamera.origin, mplayer.position + [0'f32, 1.6, 0].Vec3)
   # playerCamera.origin = [0'f32, 5, -4].Vec3

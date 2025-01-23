@@ -1,6 +1,7 @@
 import std/rationals
 import std/math
 import std/tables
+import std/options
 
 import opengl
 import glfw
@@ -78,7 +79,7 @@ proc init(): Window =
 
   playerCamera = newThirdPersonCamera(
     target      = mplayer.position + [0'f32, 1.6, 0].Vec3,
-    position    = [0'f32, 5, -4].Vec3,
+    position    = [0'f32, 5.5, -4].Vec3,
     minDistance = 3.0,
     maxDistance = 16.0,
     fulcrum     = fulcrum
@@ -89,6 +90,27 @@ proc init(): Window =
   return win
 
 proc update(win: Window, depthTarget: RenderTarget) =
+
+
+  mplayer.position = BVH.getHeight(mplayer.position)
+  rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet)
+  # playerCamera.updateOrbitalBasis(playerCamera.origin, mplayer.position + [0'f32, 1.6, 0].Vec3)
+  # playerCamera.origin = [0'f32, 5, -4].Vec3
+  # playerCamera.updateOrbitalBasis(playerCamera.origin, mplayer.position + [0'f32, 1.6, 0].Vec3)
+
+  # echo mplayer.position
+  playerCamera.followPlayer(mplayer.position + [0'f32, 1.6, 0].Vec3)
+
+  var savedCameraDistance = playerCamera.distance
+  var ray: Ray = Ray(origin: mplayer.position + [0'f32, 1.6, 0].Vec3, direction: playerCamera.w)
+  var closest = none(Intersection)
+  closest = ray.findIntersection(BVH, closest)
+  if closest.isSome():
+    if closest.get().distance < playerCamera.distance:
+      echo "yes"
+      playerCamera.distance = closest.get().distance
+      playerCamera.updatePosition()
+
   glViewport(0, 0, GLsizei(2560), GLsizei(1600))
   target(depthTarget)
   glClear(GL_DEPTH_BUFFER_BIT)
@@ -103,14 +125,9 @@ proc update(win: Window, depthTarget: RenderTarget) =
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
   rootScene.draw(playerCamera.Camera, mainLight, resolution, depthTarget)
 
-  mplayer.position = BVH.getHeight(mplayer.position)
-  rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet)
-  # playerCamera.updateOrbitalBasis(playerCamera.origin, mplayer.position + [0'f32, 1.6, 0].Vec3)
-  # playerCamera.origin = [0'f32, 5, -4].Vec3
-  # playerCamera.updateOrbitalBasis(playerCamera.origin, mplayer.position + [0'f32, 1.6, 0].Vec3)
+  playerCamera.distance = savedCameraDistance
+  playerCamera.updatePosition()
 
-  # echo mplayer.position
-  playerCamera.followPlayer(mplayer.position + [0'f32, 1.6, 0].Vec3)
 
 
   glfw.swapBuffers(win)

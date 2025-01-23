@@ -15,12 +15,12 @@ type
     box: Box = Box(minv: [Inf.float32, Inf, Inf].Vec3, maxv: [-Inf.float32, -Inf, -Inf].Vec3)
     triangles: seq[Triangle]
 
-  Intersection = ref object
+  Intersection* = ref object
     triangle: Triangle
-    distance: float
+    distance*: float
 
-  Ray = ref object
-    origin, direction: Vec3
+  Ray* = ref object
+    origin*, direction*: Vec3
 
 const NUMTESTS: int = 5
 
@@ -59,7 +59,7 @@ proc findIntersection(ray: Ray, box: Box): Option[float32] =
     near = max(max(t1.x, t1.y), t1.z)
   result = if far >= near and far > 0: some(near) else: none(float32)
 
-proc findIntersection(ray: Ray, node: Node, closest: var Option[Intersection]): Option[Intersection] =
+proc findIntersection*(ray: Ray, node: Node, closest: var Option[Intersection]): Option[Intersection] =
   var boxHit = ray.findIntersection(node.box)
   if boxHit.isSome() and (closest.isNone() or closest.get().distance > boxHit.get()):
     if node.isLeaf():
@@ -125,8 +125,8 @@ proc split(node: Node, depth, maxDepth: int) =
     var hisNode = if center[bestAxis] < bestPosition: left else: right
     hisNode.encompass(triangle)
 
-  if left.triangles.len > 5: left.split(depth+1, maxDepth)
-  if left.triangles.len > 0: node.left = some(left)
+  if left .triangles.len > 5: left.split(depth+1, maxDepth)
+  if left .triangles.len > 0: node.left = some(left)
   if right.triangles.len > 5: right.split(depth+1, maxDepth)
   if right.triangles.len > 0: node.right = some(right)
 

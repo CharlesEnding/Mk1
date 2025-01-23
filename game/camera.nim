@@ -67,7 +67,7 @@ proc newThirdPersonCamera*(target, position: Vec3, minDistance, maxDistance: flo
     distance = length(position-target)
   ThirdPersonCamera(position: position, u: u, v: v, w: w, fulcrum: fulcrum, target: target, distance: distance, minDistance: minDistance, maxDistance: maxDistance)
 
-proc updatePosition(c: var ThirdPersonCamera) = c.position = c.target + c.w * c.distance
+proc updatePosition*(c: var ThirdPersonCamera) = c.position = c.target + c.w * c.distance
 
 proc orbit*(c: var ThirdPersonCamera, dx: float) =
   let previousWY = c.w.y

@@ -4,6 +4,7 @@ layout(location = 0) out vec4 fragmentColor;
 
 in vec2 UV;
 in float out_time;
+in vec4 V_EyeSpacePos;
 
 uniform sampler2D albedo;
 
@@ -13,6 +14,18 @@ vec3 distort(vec2 uvs, float time, float phaseOffset) {
   float blendWeight = 1 - abs(1 - 2 * progress);
   return vec3(distortedUVs.x, distortedUVs.y, blendWeight);
 }
+
+float CalculateLinearFog(float distance)
+{
+  float U_FogStart = 100;
+  float U_FogEnd = 400;
+  float fogAlpha=(distance-U_FogStart)/(U_FogEnd-U_FogStart);
+   //clamp cross-border processing to obtain the value in the middle of the three parameters
+  fogAlpha=1.0-clamp(fogAlpha,0.0,1.0);
+  return fogAlpha;
+}
+
+
 
 void main()
 {
@@ -32,7 +45,17 @@ void main()
   vec4 sample1 = 0.25*texture(albedo, vec2(UV.x, UV.y + out_time*0.2));
   vec4 sample2 = 0.25*texture(albedo, vec2(UV.x - out_time*0.1, UV.y));
 
-  fragmentColor = sample1 + sample2;
+
+  float U_FogStart = 25;
+  float U_FogEnd = 120;
+  float fogAlpha=(abs(V_EyeSpacePos.z / V_EyeSpacePos.w)-U_FogStart)/(U_FogEnd-U_FogStart);
+   //clamp cross-border processing to obtain the value in the middle of the three parameters
+  fogAlpha=1.0-clamp(fogAlpha,0.0,0.8);
+  vec4 U_FogColor = vec4(0.40, 0.25, 0.10, 1.0);
+  vec4 linearColor = mix(U_FogColor, sample1+sample2, fogAlpha);
+
+
+  fragmentColor = linearColor;
   //fragmentColor = vec4(UV.x, UV.y, 0.0, 1.0);
   //fragmentColor = mix(gLowColour, gHighColour, height);
 }

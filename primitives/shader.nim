@@ -13,10 +13,12 @@ type
     shaderId*: ShaderId
     program*: GLuint
     projMatrixLocation*: GLuint
+    viewMatrixLocation*: GLuint
     modelMatrixLocation*: GLuint
     lightMatrixLocation*: GLuint
     timeLocation*: GLint
     projMatrix*: Mat4
+    viewMatrix*: Mat4
     lightMatrix*: Mat4
 
 proc newShader*(vertexShaderPath, fragmentShaderPath: string, shaderId: ShaderId): Shader =
@@ -25,6 +27,7 @@ proc newShader*(vertexShaderPath, fragmentShaderPath: string, shaderId: ShaderId
   result.program = compileShaders(vertexShaderPath, fragmentShaderPath)
   # TODO: Better way to handle uniforms
   result.projMatrixLocation = cast[GLuint](glGetUniformLocation(result.program, "projMatrix"))
+  result.viewMatrixLocation = cast[GLuint](glGetUniformLocation(result.program, "viewMatrix"))
   result.modelMatrixLocation = cast[GLuint](glGetUniformLocation(result.program, "modelMatrix"))
   result.lightMatrixLocation = cast[GLuint](glGetUniformLocation(result.program, "lightMatrix"))
   result.timeLocation = cast[GLint](glGetUniformLocation(result.program, "time"))
@@ -34,16 +37,18 @@ proc newShader*(vertexShaderPath, fragmentShaderPath: string, shaderId: ShaderId
 
 proc loadShader*(name: string, shaderId: ShaderId): Shader = newShader(name & "_vert.glsl", name & "_frag.glsl", shaderId)
 
-proc toGpu*(shader: Shader, playerCamera: Camera, light: Light, resolution: Resolution) =
+proc toGpu*(shader: Shader, playerCamera: Camera, light: Light) =
   var m = [
     [1'f32, 0, 0, 0],
     [0, 1, 0, 0],
     [0, 0, 1, 0],
     [0, 0, 0, 1]
   ]
-  var p = playerCamera.cameraMatrix(resolution) # Move to scene
+  var p = playerCamera.projectionMatrix() # Move to scene
+  var v = playerCamera.viewMatrix()
   shader.projMatrix = p
-  shader.lightMatrix = light.lightMatrix(resolution)
+  shader.viewMatrix = v
+  shader.lightMatrix = light.lightMatrix()
   var epoch = epochTime() / 100
   var time: GLfloat = (epoch - floor(epoch)) * 100
 
@@ -52,6 +57,7 @@ proc toGpu*(shader: Shader, playerCamera: Camera, light: Light, resolution: Reso
   # And that can happend across shaders.
   if shader.shaderId != 3:
     glUniformMatrix4fv(GLint(shader.projMatrixLocation), 1, true, cast[ptr GLFloat](shader.projMatrix.addr)) # Move to model
+    glUniformMatrix4fv(GLint(shader.viewMatrixLocation), 1, true, cast[ptr GLFloat](shader.viewMatrix.addr)) # Move to model
   if shader.shaderId == 3 or shader.shaderId == 0:
     glUniformMatrix4fv(GLint(shader.lightMatrixLocation), 1, true, cast[ptr GLFloat](shader.lightMatrix.addr)) # Move to model
 

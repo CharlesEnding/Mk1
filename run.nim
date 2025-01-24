@@ -79,11 +79,12 @@ proc init(): Window =
 
   playerCamera = newThirdPersonCamera(
     target      = mplayer.position + [0'f32, 1.6, 0].Vec3,
-    position    = [0'f32, 5.5, -4].Vec3,
+    position    = [0'f32, 5.15, -4].Vec3,
     minDistance = 3.0,
-    maxDistance = 16.0,
+    maxDistance = 20.0,
     fulcrum     = fulcrum
   )
+  echo playerCamera.w
 
   controller.setup(win, playerCamera, mainLight, mplayer)#, collisionSystem)
 
@@ -107,7 +108,6 @@ proc update(win: Window, depthTarget: RenderTarget) =
   closest = ray.findIntersection(BVH, closest)
   if closest.isSome():
     if closest.get().distance < playerCamera.distance:
-      echo "yes"
       playerCamera.distance = closest.get().distance
       playerCamera.updatePosition()
 
@@ -116,19 +116,17 @@ proc update(win: Window, depthTarget: RenderTarget) =
   glClear(GL_DEPTH_BUFFER_BIT)
   glEnable(GL_CULL_FACE)
   glCullFace(GL_FRONT)
-  rootScene.drawDepth(playerCamera.Camera, mainLight, resolution)
+  rootScene.drawDepth(playerCamera.Camera, mainLight)
   glCullFace(GL_BACK)
   glDisable(GL_CULL_FACE)
 
   glViewport(0, 0, GLsizei(1280), GLsizei(800))
   targetDefault()
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-  rootScene.draw(playerCamera.Camera, mainLight, resolution, depthTarget)
+  rootScene.draw(playerCamera.Camera, mainLight, depthTarget)
 
   playerCamera.distance = savedCameraDistance
   playerCamera.updatePosition()
-
-
 
   glfw.swapBuffers(win)
   glfw.pollEvents()

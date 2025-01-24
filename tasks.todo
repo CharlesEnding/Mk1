@@ -42,18 +42,21 @@ Tasks:
  ☐ Lens flare
 
 Intermediary tasks:
-  ✔ Implement render targets @done (25-01-19 12:27)
-  ☐ Camera pos uniform
-  ☐ Camera collision
   ☐ Fog
+    ☐ Camera pos uniform
   ☐ Water refraction
+  ☐ Shadows
+    ☐ Implement projective shadows
+    ☐ Restrict shadows to specific mesh
+      ☐ caster
+      ☐ receiver (not walls or water)
+      ☐ perspective
+    ☐ Character shadows
+  ✔ Implement render targets @done (25-01-19 12:27)
+  ✔ Camera collision @done (25-01-23 16:22)
+  ☐ Better collision mesh for BVH
+  ☐ Wall collisions
   ☐ Clean Shader/Material/Scene system
-  ☐ Implement projective shadows
-  ☐ Restrict shadows to specific mesh
-    ☐ caster
-    ☐ receiver (not walls or water)
-    ☐ perspective
-  ☐ Character shadows
   ☐ Light position
   ✔ Shadows @done (25-01-19 12:27)
   ✔ Light primitive @done (25-01-19 12:27)
@@ -61,10 +64,6 @@ Intermediary tasks:
   ☐ Inverted faces leading to bad normals
   ✔ Shader for sky @done (25-01-19 03:54)
   ✔ Shader for transparent meshes @done (25-01-19 03:54)
-  ☐ Collision
-    ☐ Grid -> triangles for scene
-      ☐ Intercepts ray + walls grid
-    ☐ Disks for characters
   ☐ Move resolution out of Camera
 
 

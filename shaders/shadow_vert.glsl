@@ -6,6 +6,7 @@ layout(location = 2) in vec2 in_UV;
 
 uniform float time;
 uniform mat4 projMatrix;
+uniform mat4 viewMatrix;
 uniform mat4 modelMatrix;
 uniform mat4 lightMatrix;
 

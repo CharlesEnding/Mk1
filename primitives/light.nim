@@ -36,7 +36,7 @@ proc viewMatrix*(l: Light): Mat4 =
     [  0,   0,   0, 1],
   ].Mat4 * translationMatrix(-l.position)
 
-proc lightMatrix*(l: Light, r: Resolution): Mat4 =  projectionMatrix(l) * viewMatrix(l)
+proc lightMatrix*(l: Light): Mat4 =  projectionMatrix(l) * viewMatrix(l)
 
 proc newLight*(position, color: Vec3, radiantPower: float): Light =
   var direction = norm([0'f32, 0, 0].Vec3 - position)

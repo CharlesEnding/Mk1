@@ -55,7 +55,7 @@ proc viewMatrix*(c: Camera): Mat4 = # TODO: Modify to work with collider imposed
     [    0,     0,     0, 1],
   ].Mat4 * translationMatrix(-c.position)
 
-proc cameraMatrix*(c: Camera, r: Resolution): Mat4 =  projectionMatrix(c) * viewMatrix(c)
+proc cameraMatrix*(c: Camera): Mat4 =  projectionMatrix(c) * viewMatrix(c)
 
 proc newThirdPersonCamera*(target, position: Vec3, minDistance, maxDistance: float, fulcrum: Fulcrum): ThirdPersonCamera =
   assert target != position, "Bad camera configuration."

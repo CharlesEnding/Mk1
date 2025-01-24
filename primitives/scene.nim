@@ -41,9 +41,9 @@ proc newScene*(): Scene =
       result.models[^1].materials[materialId].init(result.shaders[0].program, "albedo")
       result.models[^1].materials[materialId].shaderIds = @[0]
 
-proc draw*(scene: Scene, playerCamera: Camera, light: Light, resolution: Resolution, depthTarget: RenderTarget) =
+proc draw*(scene: Scene, playerCamera: Camera, light: Light, depthTarget: RenderTarget) =
   for shader in scene.shaders[0..<3]:
-    shader.toGpu(playerCamera, light, resolution)
+    shader.toGpu(playerCamera, light)
     if shader.shaderId == 0:
       var samplerAddr = cast[GLint](glGetUniformLocation(shader.program, "shadowMap"))
       glActiveTexture(GL_TEXTURE1)
@@ -55,8 +55,8 @@ proc draw*(scene: Scene, playerCamera: Camera, light: Light, resolution: Resolut
   glUseProgram(0)
 
 
-proc drawDepth*(scene: Scene, playerCamera: Camera, light: Light, resolution: Resolution) =
-  scene.shaders[3].toGpu(playerCamera, light, resolution)
+proc drawDepth*(scene: Scene, playerCamera: Camera, light: Light) =
+  scene.shaders[3].toGpu(playerCamera, light)
   for model in scene.models:
     model.draw(scene.shaders[3].shaderId, drawWithMaterial=false)
   glUseProgram(0)

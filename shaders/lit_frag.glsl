@@ -6,6 +6,7 @@ in vec3 position;
 in vec3 normal;
 in vec2 UV;
 in vec4 positionLightSpace;
+in vec4 V_EyeSpacePos;
 
 uniform sampler2D albedo;
 uniform sampler2D shadowMap;
@@ -26,6 +27,7 @@ float ShadowCalculation(vec4 posLightSpace)
 
     return shadow;
 }
+
 
 
 void main()
@@ -77,6 +79,13 @@ void main()
   // Slope
   // float color = abs(normal.y) > 0.5 ? 1.0 : 0.0;
   // fragmentColor = vec4(1.0, color, 0.0, 1.0) * (1 - 0.0001 * shadow);
+  float U_FogStart = 25;
+  float U_FogEnd = 120;
+  float fogAlpha=(abs(V_EyeSpacePos.z / V_EyeSpacePos.w)-U_FogStart)/(U_FogEnd-U_FogStart);
+   //clamp cross-border processing to obtain the value in the middle of the three parameters
+  fogAlpha=1.0-clamp(fogAlpha,0.0,0.8);
+  vec3 U_FogColor = vec3(0.40, 0.25, 0.10);
+  linearColor = mix(U_FogColor, linearColor, fogAlpha);
 
 
   // final color (after gamma correction)

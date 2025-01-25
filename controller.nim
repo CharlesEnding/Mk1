@@ -10,32 +10,27 @@ import utils/blas
 import game/camera
 import primitives/light
 import game/player
-# import physics/collision
-
-
 var
   playerCamera: ThirdPersonCamera
   lastMove: float
   mainLight: Light
   mplayer: Player
-  # collider: CollisionSystem
+  activeKeys: set[Key] = {}
+
+proc updatePlayerSpeed() =
+  var speed = [0'f32, 0, 0].Vec3
+  if keyUp    in activeKeys: speed = speed + -playerCamera.w * [1'f32, 0, 1].Vec3
+  if keyDown  in activeKeys: speed = speed +  playerCamera.w * [1'f32, 0, 1].Vec3
+  if keyLeft  in activeKeys: speed = speed + -playerCamera.u * [1'f32, 0, 1].Vec3
+  if keyRight in activeKeys: speed = speed +  playerCamera.u * [1'f32, 0, 1].Vec3
+  speed = norm(speed) * mplayer.maxSpeed
+  mplayer.speed = speed
 
 proc keyCb(w: Window, key: Key, scanCode: int32, action: KeyAction,
     mods: set[ModifierKey]) =
-
-  var delta: Vec3
-  if $action == "down":
-    case $key:
-      of "up":    mplayer.speed = norm(-playerCamera.w * [1'f32, 0, 1].Vec3) * mplayer.maxSpeed
-      of "down":  mplayer.speed = norm( playerCamera.w * [1'f32, 0, 1].Vec3) * mplayer.maxSpeed
-      of "left":  mplayer.speed = norm(-playerCamera.u * [1'f32, 0, 1].Vec3) * mplayer.maxSpeed
-      of "right": mplayer.speed = norm( playerCamera.u * [1'f32, 0, 1].Vec3) * mplayer.maxSpeed
-  elif $action == "up":
-    case $key:
-      of "up":    mplayer.speed = [0'f32, 0, 0]
-      of "down":  mplayer.speed = [0'f32, 0, 0]
-      of "left":  mplayer.speed = [0'f32, 0, 0]
-      of "right": mplayer.speed = [0'f32, 0, 0]
+  if $action == "down": activeKeys.incl(key)
+  elif $action == "up": activeKeys.excl(key)
+  updatePlayerSpeed()
 
 var
   lastMouseX: float64 = 0

@@ -98,6 +98,7 @@ proc length*[N, T](v: Vec[N, T]): float32 {.inline.} =
 
 proc norm*[N, T](v: Vec[N, T]): Vec[N, T] {.inline.} =
   let len = v.length
+  if len == 0: return [0'f32, 0, 0]
   for i in 0..<N:
     result[i] = v[i] / len
 

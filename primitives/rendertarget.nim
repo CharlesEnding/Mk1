@@ -6,6 +6,7 @@ import opengl
 type
   RenderTarget* = ref object
     fbo*: GpuAddr
+    rbo*: GpuAddr
     textureAddr*: GpuAddr
   RenderTargetKind* = enum rtkColor, rtkDepth, rtkStencil
 
@@ -18,23 +19,30 @@ proc newRenderTarget*(resolution: Resolution, targetKind: RenderTargetKind): Ren
   result = new RenderTarget
   glGenFramebuffers(1, result.fbo.addr)
   target(result)
-  glGenTextures(1, result.textureAddr.addr);
-  glBindTexture(GL_TEXTURE_2D, result.textureAddr);
+  glGenTextures(1, result.textureAddr.addr)
+  glBindTexture(GL_TEXTURE_2D, result.textureAddr)
   case targetKind
   of rtkColor:
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB.int32, resolution.nx.GLint, resolution.ny.int32, 0, GL_RGB, GL_UNSIGNED_BYTE, nil);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, result.textureAddr, 0);
+    # Add a render buffer for depth
+    glGenRenderbuffersEXT(1, result.rbo.addr)
+    glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, result.rbo)
+    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, resolution.nx.GLint, resolution.ny.int32)
+    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, result.rbo)
+    # Add a texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB.int32, resolution.nx.GLint, resolution.ny.int32, 0, GL_RGB, GL_UNSIGNED_BYTE, nil)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, result.textureAddr, 0)
+    # glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, result.textureAddr, 0)
   of rtkDepth:
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT.int32, resolution.nx.int32, resolution.ny.int32, 0, GL_DEPTH_COMPONENT, cGL_FLOAT, nil);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, result.textureAddr, 0);
-    glDrawBuffer(GL_NONE);
-    glReadBuffer(GL_NONE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT.int32, resolution.nx.int32, resolution.ny.int32, 0, GL_DEPTH_COMPONENT, cGL_FLOAT, nil)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, result.textureAddr, 0)
+    glDrawBuffer(GL_NONE)
+    glReadBuffer(GL_NONE)
   of rtkStencil:
     discard
   targetDefault()

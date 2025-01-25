@@ -29,6 +29,7 @@ var
   rootScene: Scene
   mplayer: Player = new Player
   BVH: Node
+  refractionMaterial: Material = new Material
 
 proc init(): Window =
   glfw.initialize()
@@ -58,10 +59,14 @@ proc init(): Window =
   #glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
   glClearDepth(1.0f)
-  glClearColor(1.0f, 1.0f, 1.0f, 1.0f)
+  # glClearColor(0.98f, 0.77f, 0.51f, 1.0f)
+  glClearColor(0f, 0f, 0f, 1.0f)
 
   enableAutoGLerrorCheck(true)
   rootScene = newScene()
+
+  refractionMaterial.texturePath = "assets/MacAnu/sr1roa2.png"
+  refractionMaterial.init(rootScene.shaders[4].program, "albedo")
 
   rootScene.models.add  loadObj("assets/Mistral", "Mistral.obj")
   loadMtl("assets/Mistral", "Mistral.mtl", rootScene.models[^1])
@@ -90,7 +95,7 @@ proc init(): Window =
 
   return win
 
-proc update(win: Window, depthTarget: RenderTarget) =
+proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
 
 
   mplayer.position = BVH.getHeight(mplayer.position)
@@ -111,6 +116,7 @@ proc update(win: Window, depthTarget: RenderTarget) =
       playerCamera.distance = closest.get().distance
       playerCamera.updatePosition()
 
+  # Render depth for shadow map
   glViewport(0, 0, GLsizei(2560), GLsizei(1600))
   target(depthTarget)
   glClear(GL_DEPTH_BUFFER_BIT)
@@ -120,10 +126,19 @@ proc update(win: Window, depthTarget: RenderTarget) =
   glCullFace(GL_BACK)
   glDisable(GL_CULL_FACE)
 
+  # Render riverbed for water refraction
+  # https://cgvr.cs.uni-bremen.de/teaching/cg_literatur/frame_buffer_objects.html
+  glViewport(0, 0, GLsizei(1280), GLsizei(800))
+  target(refractionTarget)
+  glClear(GL_DEPTH_BUFFER_BIT)
+  glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+  rootScene.drawRefraction(playerCamera.Camera, mainLight, refractionMaterial)
+
+  # Render full scene
   glViewport(0, 0, GLsizei(1280), GLsizei(800))
   targetDefault()
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-  rootScene.draw(playerCamera.Camera, mainLight, depthTarget)
+  rootScene.draw(playerCamera.Camera, mainLight, depthTarget, refractionTarget)
 
   playerCamera.distance = savedCameraDistance
   playerCamera.updatePosition()
@@ -137,9 +152,9 @@ proc destroy() =
 proc main() =
   var window: Window = init()
   var depthTarget: RenderTarget = newRenderTarget(Resolution(nx: 2560, ny:1600), rtkDepth)
-  var refractionTarget: RenderTarget = newRenderTarget(Resolution(nx: 1280, ny:800), rtkDepth)
+  var refractionTarget: RenderTarget = newRenderTarget(Resolution(nx: 1280, ny:800), rtkColor)
   while not window.shouldClose:
-    update(window, depthTarget)
+    update(window, depthTarget, refractionTarget)
   destroy()
 
 main()

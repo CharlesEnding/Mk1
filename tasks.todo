@@ -39,12 +39,20 @@ Tasks:
  ☐ Inventory
  ☐ Multiplayer
  ☐ Fog
+
+Other maps tasks:
+ ☐ Volumetric Fog
  ☐ Lens flare
+ ☐ terrain
+ ☐ rain
+ ☐ horizon fade
+ ☐ special effects (spells)
 
 Intermediary tasks:
-  ☐ Fog
-    ☐ Camera pos uniform
-  ☐ Water refraction
+  ✔ Fog @done (25-01-24 14:38)
+  ✔ Water refraction @done (25-01-25 11:58)
+  ☐ Water specular
+  ☐ Water depth & colour
   ☐ Shadows
     ☐ Implement projective shadows
     ☐ Restrict shadows to specific mesh
@@ -64,7 +72,6 @@ Intermediary tasks:
   ☐ Inverted faces leading to bad normals
   ✔ Shader for sky @done (25-01-19 03:54)
   ✔ Shader for transparent meshes @done (25-01-19 03:54)
-  ☐ Move resolution out of Camera
 
 
 Jalons:
@@ -72,7 +79,8 @@ Jalons:
  ✔ Scene is lit @done (25-01-19 03:03)
  ✔ Water is shaded @done (25-01-19 03:03)
  ☐ Character is animated
- ☐ Character can move
+ ✔ Character can move @done (25-01-24 18:33)
 
 An eye rolling around the character's base on the ground indicates the way he's looking
 We can call out to players to get their attention
+Level cap is not raised, rather extensions introduce enemies strong/weak to a specific armor/weapon type

@@ -38,7 +38,7 @@ Tasks:
  ☐ Music
  ☐ Inventory
  ☐ Multiplayer
- ☐ Fog
+ ✔ Fog @done (25-01-25 12:07)
 
 Other maps tasks:
  ☐ Volumetric Fog
@@ -51,7 +51,7 @@ Other maps tasks:
 Intermediary tasks:
   ✔ Fog @done (25-01-24 14:38)
   ✔ Water refraction @done (25-01-25 11:58)
-  ☐ Water specular
+  ☐ Water specular highlights (highlights or contrast w/ shadows? Or reflections?)
   ☐ Water depth & colour
   ☐ Shadows
     ☐ Implement projective shadows
@@ -68,7 +68,6 @@ Intermediary tasks:
   ☐ Light position
   ✔ Shadows @done (25-01-19 12:27)
   ✔ Light primitive @done (25-01-19 12:27)
-  ☐ Water specular highlights (highlights or contrast w/ shadows? Or reflections?)
   ☐ Inverted faces leading to bad normals
   ✔ Shader for sky @done (25-01-19 03:54)
   ✔ Shader for transparent meshes @done (25-01-19 03:54)

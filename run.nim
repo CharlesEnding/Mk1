@@ -10,7 +10,7 @@ import controller
 import primitives/[scene, rendertarget, light, material, mesh]
 import utils/[blas, obj]
 import physics/collision
-import game/[player, camera]
+import game/[player, camera, timing]
 
 var
   fulcrum: Fulcrum = Fulcrum(near: 0.1, far: 10, fov: 35, aspectRatio: 1280 // 800)
@@ -27,9 +27,10 @@ var
   # mainLight: Light = newLight([90'f32, 70, -110].Vec3, [0.98'f32, 0.77, 0.51].Vec3, 700.0)
   mainLight: Light = newLight([60'f32, 80, -80].Vec3, [0.98'f32, 0.77, 0.51].Vec3, 700.0)
   rootScene: Scene
-  mplayer: Player = new Player
+  mplayer: Player
   BVH: Node
   refractionMaterial: Material = new Material
+  mtiming: Timing
 
 proc init(): Window =
   glfw.initialize()
@@ -63,6 +64,16 @@ proc init(): Window =
   glClearColor(0f, 0f, 0f, 1.0f)
 
   enableAutoGLerrorCheck(true)
+
+  mtiming = newTiming()
+  mplayer = newPlayer()
+  proc mplayerHook(numTicks: int) =
+    echo mplayer.speed
+    for i in 0..<numTicks:
+      mplayer.move()
+    echo mplayer.position
+  mtiming.register(mplayerHook)
+
   rootScene = newScene()
 
   refractionMaterial.texturePath = "assets/MacAnu/sr1roa2.png"
@@ -79,7 +90,7 @@ proc init(): Window =
   BVH = buildTree("assets/MacAnu", "MacAnu_collison.obj", 10)
   mplayer.feet = rootScene.models[^1].meshes[0].getFeet()
   mplayer.position = BVH.getHeight(mplayer.feet)
-  mplayer.speed = [1'f32, 0, 1].Vec3
+  # mplayer.speed = [1'f32, 0, 1].Vec3
   rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet)
 
   playerCamera = newThirdPersonCamera(
@@ -142,6 +153,8 @@ proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
 
   playerCamera.distance = savedCameraDistance
   playerCamera.updatePosition()
+
+  mtiming.frameTick()
 
   glfw.swapBuffers(win)
   glfw.pollEvents()

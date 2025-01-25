@@ -24,14 +24,18 @@ proc keyCb(w: Window, key: Key, scanCode: int32, action: KeyAction,
     mods: set[ModifierKey]) =
 
   var delta: Vec3
-  if $action == "down" or $action == "repeat":
+  if $action == "down":
     case $key:
-      of "up":    delta = -playerCamera.w * mplayer.speed
-      of "down":  delta =  playerCamera.w * mplayer.speed
-      of "left":  delta = -playerCamera.u * mplayer.speed
-      of "right": delta =  playerCamera.u * mplayer.speed
-    mplayer.position = mplayer.position + delta
-    # mplayer.position = [mplayer.position.x, collider.getHeight(mplayer.position).y, mplayer.position.z]
+      of "up":    mplayer.speed = norm(-playerCamera.w * [1'f32, 0, 1].Vec3) * mplayer.maxSpeed
+      of "down":  mplayer.speed = norm( playerCamera.w * [1'f32, 0, 1].Vec3) * mplayer.maxSpeed
+      of "left":  mplayer.speed = norm(-playerCamera.u * [1'f32, 0, 1].Vec3) * mplayer.maxSpeed
+      of "right": mplayer.speed = norm( playerCamera.u * [1'f32, 0, 1].Vec3) * mplayer.maxSpeed
+  elif $action == "up":
+    case $key:
+      of "up":    mplayer.speed = [0'f32, 0, 0]
+      of "down":  mplayer.speed = [0'f32, 0, 0]
+      of "left":  mplayer.speed = [0'f32, 0, 0]
+      of "right": mplayer.speed = [0'f32, 0, 0]
 
 var
   lastMouseX: float64 = 0

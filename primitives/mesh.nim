@@ -31,25 +31,15 @@ proc draw*(mesh: Mesh) =
   glDrawElements(GL_TRIANGLES, mesh.indexedVertices.ebo.len.GLint, GL_UNSIGNED_INT, nil)
   glBindVertexArray(0)
 
-#TODO: Move to character module
-proc getFeet*(mesh: Mesh): Vec3 =
-  var minx, miny, minz, maxx, maxz: float
-  minx = 1000
-  miny = 1000
-  minz = 1000
-  maxx = -1000
-  maxz = -1000
+proc getFeet*(mesh: Mesh): Vec3 = #TODO: Move to character module
+  var mini: Vec3 = [ Inf.float32,  Inf,  Inf].Vec3
+  var maxi: Vec3 = [-Inf.float32, -Inf, -Inf].Vec3
 
   for i in 0..<mesh.indexedVertices.ebo.len:
     let
       vertexIndex = mesh.indexedVertices.ebo[i]
       vertex = mesh.indexedVertices.vbo[vertexIndex].position
-    if vertex.x < minx: minx = vertex.x
-    if vertex.y < miny: miny = vertex.y
-    if vertex.z < minz: minz = vertex.z
-    if vertex.x > maxx: maxx = vertex.x
-    if vertex.z > maxz: maxz = vertex.z
-  var
-    centerx: float32 = (maxx - minx) / 2.0 + minx
-    centerz = (maxz - minz) / 2.0 + minz
-  return [centerx, miny, centerz].Vec3
+    mini = min(mini, vertex)
+    maxi = max(maxi, vertex)
+  var center: Vec3 = (maxi - mini) / 2.0 + mini
+  return [center.x, mini.y, center.z].Vec3

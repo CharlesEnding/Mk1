@@ -10,7 +10,7 @@ import ../utils/blas
 import ../utils/bogls
 
 type
-  Model* = ref object
+  Model* = ref object of RootObj
     meshes*: seq[Mesh]
     materials*: Table[MaterialId, Material]
     materialIds*: seq[MaterialId]
@@ -32,6 +32,9 @@ proc addMesh*(model: Model, vertices: MeshVertices) =
       newVertices.add MeshVertex(position: vertices[k+j].position, normal: normal, texCoord: vertices[k+j].texCoord)
 
   var indexedVertices: IndexedMeshVertices = newVertices.indexVertices()
+  model.meshes.add(newMesh(indexedVertices))
+
+proc addIndexedMesh*(model: Model, indexedVertices: IndexedMeshVertices) =
   model.meshes.add(newMesh(indexedVertices))
 
 proc draw*(model: Model, shaderId: ShaderId, drawWithMaterial: bool = true) =#, cameraMatrix: Mat4) =

@@ -1,6 +1,6 @@
 import std/[options, sequtils]
 
-import ../utils/[blas, obj]
+import ../utils/blas
 import ../primitives/model
 
 type
@@ -130,10 +130,9 @@ proc split(node: Node, depth, maxDepth: int) =
   if right.triangles.len > 5: right.split(depth+1, maxDepth)
   if right.triangles.len > 0: node.right = some(right)
 
-proc buildTree*(meshPath, meshName: string, depth: int): Node =
+proc buildTree*(model: Model, depth: int): Node =
   result = new Node
 
-  var model: Model = loadObj(meshPath, meshName)
   for mesh in model.meshes:
     for i in 0..<mesh.indexedVertices.ebo.len:
       if i mod 3 != 0: continue

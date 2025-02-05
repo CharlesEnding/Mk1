@@ -1,7 +1,7 @@
 import std/[tables, strutils, sequtils]
 
 import ../game/camera
-import ../utils/obj
+import ../utils/gltf
 import material
 import mesh
 import model
@@ -19,8 +19,9 @@ type
 proc newScene*(): Scene =
   # TODO: scene description DSL? Resource manager to segregate I/O?
   result = new Scene
-  result.models.add  loadObj("assets/MacAnu", "MacAnu.obj")
-  loadMtl("assets/MacAnu", "MacAnu.mtl", result.models[^1])
+  result.models.add  loadObj("assets/MacAnu", "MacAnu.glb")
+  # result.models.add  loadObj("assets/MacAnu", "MacAnu.obj")
+  # loadMtl("assets/MacAnu", "MacAnu.mtl", result.models[^1])
   result.shaders.add loadShader("shaders/lit", 0.ShaderId)
   result.shaders.add loadShader("shaders/water", 1.ShaderId)
   result.shaders.add loadShader("shaders/basic", 2.ShaderId)

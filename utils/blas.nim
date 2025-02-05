@@ -98,12 +98,18 @@ proc length*[N, T](v: Vec[N, T]): float32 {.inline.} =
 
 proc norm*[N, T](v: Vec[N, T]): Vec[N, T] {.inline.} =
   let len = v.length
-  if len == 0: return [0'f32, 0, 0]
+  if len == 0:
+    for i in 0..<N:
+      result[i] = 0
+      return result
   for i in 0..<N:
     result[i] = v[i] / len
 
-proc lerp*[N, T](v0, v1: Vec[N, T], t: T): Vec[N, T] {.inline.} =
+proc  lerp*[N, T](v0, v1: Vec[N, T], t: T): Vec[N, T] {.inline.} =
   return (1 - t) * v0 + t * v1
+
+proc slerp*[N, T](v0, v1: Vec[N, T], t: T): Vec[N, T] {.inline.} =
+  result = if dot(v0, v1) >= 0: lerp(v0, v1, t).norm() else: lerp(v0, -v1, t).norm()
 
 proc min*[N, T](v0, v1: Vec[N, T]): Vec[N, T] {.inline.} =
   for i in 0..<N:

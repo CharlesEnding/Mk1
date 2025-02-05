@@ -135,6 +135,10 @@ proc loadTexture*(data: seq[byte]; width, height: int; textureID: var GLUint) {.
   glGenerateMipmap(GL_TEXTURE_2D)
   glBindTexture(GL_TEXTURE_2D, 0)
 
+proc loadTextureFromBuffer*(buffer: seq[byte]; textureID: var GLUint) {.inline.} =
+  var width, height, channels: int
+  let data: seq[byte] = loadFromMemory(buffer, width, height, channels, 4)
+  loadTexture(data, width, height, textureID)
 
 proc loadTexture*(filepath: string, textureID: var GLUint) {.inline.} =
   var width, height, channels: int

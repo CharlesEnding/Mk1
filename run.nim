@@ -7,10 +7,11 @@ import opengl
 import glfw
 
 import controller
-import primitives/[scene, rendertarget, light, material, mesh]
-import utils/[blas, obj]
+import primitives/[scene, rendertarget, light, material, mesh, model]
+import utils/blas
 import physics/collision
 import game/[player, camera, timing]
+import utils/gltf
 
 var
   fulcrum: Fulcrum = Fulcrum(near: 0.1, far: 10, fov: 35, aspectRatio: 1280 // 800)
@@ -68,26 +69,27 @@ proc init(): Window =
   mtiming = newTiming()
   mplayer = newPlayer()
   proc mplayerHook(numTicks: int) =
-    echo mplayer.speed
     for i in 0..<numTicks:
       mplayer.move()
-    echo mplayer.position
   mtiming.register(mplayerHook)
 
   rootScene = newScene()
 
-  refractionMaterial.texturePath = "assets/MacAnu/sr1roa2.png"
+  refractionMaterial.texturePath = some("assets/MacAnu/sr1roa2.png")
   refractionMaterial.init(rootScene.shaders[4].program, "albedo")
 
-  rootScene.models.add  loadObj("assets/Mistral", "Mistral.obj")
-  loadMtl("assets/Mistral", "Mistral.mtl", rootScene.models[^1])
+  # rootScene.models.add  loadObj("assets/Mistral", "Mistral.obj")
+  rootScene.models.add  gltf.loadObj("assets/Mistral", "Mistral.glb")
+  # rootScene.models.add  gltf.loadObj("assets", "Fox.glb")
+  # loadMtl("assets/Mistral", "Mistral.mtl", rootScene.models[^1])
   for materialId in rootScene.models[^1].materialIds:
     rootScene.models[^1].materials[materialId].init(rootScene.shaders[0].program, "albedo")
     rootScene.models[^1].materials[materialId].shaderIds = @[0]
 
   rootScene.models[^1].transform = translationMatrix([0'f32, 10, 0].Vec3)
 
-  BVH = buildTree("assets/MacAnu", "MacAnu_collison.obj", 10)
+  var collisionModel: Model = gltf.loadObj("assets/MacAnu", "MacAnu_collison.glb")
+  BVH = buildTree(collisionModel, 10)
   mplayer.feet = rootScene.models[^1].meshes[0].getFeet()
   mplayer.position = BVH.getHeight(mplayer.feet)
   # mplayer.speed = [1'f32, 0, 1].Vec3
@@ -100,7 +102,6 @@ proc init(): Window =
     maxDistance = 20.0,
     fulcrum     = fulcrum
   )
-  echo playerCamera.w
 
   controller.setup(win, playerCamera, mainLight, mplayer)#, collisionSystem)
 
@@ -118,6 +119,7 @@ proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
   # echo mplayer.position
   playerCamera.followPlayer(mplayer.position + [0'f32, 1.6, 0].Vec3)
 
+  # TODO: Only do this on player or camera movement
   var savedCameraDistance = playerCamera.distance
   var ray: Ray = Ray(origin: mplayer.position + [0'f32, 1.6, 0].Vec3, direction: playerCamera.w)
   var closest = none(Intersection)
@@ -126,6 +128,7 @@ proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
     if closest.get().distance < playerCamera.distance:
       playerCamera.distance = closest.get().distance
       playerCamera.updatePosition()
+  ##################################################
 
   # Render depth for shadow map
   glViewport(0, 0, GLsizei(2560), GLsizei(1600))

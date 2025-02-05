@@ -1,22 +1,26 @@
 
 Architecture:
+
   A scene:
     has models.
-    has shader programs.
-  A material:
-    has parameters.
     has textures.
-  A model:
     has meshes.
-    has materials.
-    has transforms.
-    has meshes to material.
+    has shader programs.
+
+  A model:
+    has transform.
+    has meshes.
+
   A mesh:
     has vertices.
     has a material.
-    has a texture.
 
-Uniforms, textures
+  A material:
+    has a map of sampler names to textures.
+    has a list of shaders to which it is visible.
+    has a map to shaders to sampler names to gpu addresses.
+    has an init function which fills the gpu address map.
+    has an activate function which activates the textures.
 
 
 Tasks:
@@ -51,6 +55,7 @@ Other maps tasks:
 Intermediary tasks:
   ✔ Fog @done (25-01-24 14:38)
   ✔ Water refraction @done (25-01-25 11:58)
+  ✔ Parse GLTF files @done (25-02-05 07:55)
   ☐ Water specular highlights (highlights or contrast w/ shadows? Or reflections?)
   ☐ Water depth & colour
   ☐ Shadows

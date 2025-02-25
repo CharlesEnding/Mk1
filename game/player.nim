@@ -1,4 +1,3 @@
-import timing
 import ../utils/blas
 
 type

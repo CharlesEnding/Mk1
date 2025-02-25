@@ -9,7 +9,7 @@ type
   Resolution* = object
     nx*, ny*: range[1..high(int)]
 
-  Fulcrum* = ref object
+  Fulcrum* = object
     near*, far*: float32
     fov*: FieldOfView
     aspectRatio*: AspectRatio # Replace resolution with this
@@ -71,7 +71,7 @@ proc updatePosition*(c: var ThirdPersonCamera) = c.position = c.target + c.w * c
 
 proc orbit*(c: var ThirdPersonCamera, dx: float) =
   let previousWY = c.w.y
-  c.position = c.position + c.u * dx
+  c.position = c.position + c.u * dx * c.distance
   c.w = norm(c.position - c.target)
   c.w = [c.w.x, previousWY, c.w.z] # Fix errors introduced by numerical imprecision
   c.u = cross(UP, c.w).norm()

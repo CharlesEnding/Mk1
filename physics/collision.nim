@@ -1,10 +1,10 @@
-import std/[options, sequtils]
+import std/[options, sequtils, tables]
 
-import ../utils/blas
-import ../primitives/model
+import ../utils/[blas, bogls]
+import ../primitives/[model, mesh]
 
 type
-  Box = ref object
+  Box = object
     minv: Vec3 = [Inf.float32, Inf, Inf].Vec3
     maxv: Vec3 = [-Inf.float32, -Inf, -Inf].Vec3
 
@@ -15,11 +15,11 @@ type
     box: Box = Box(minv: [Inf.float32, Inf, Inf].Vec3, maxv: [-Inf.float32, -Inf, -Inf].Vec3)
     triangles: seq[Triangle]
 
-  Intersection* = ref object
+  Intersection* = object
     triangle: Triangle
     distance*: float
 
-  Ray* = ref object
+  Ray* = object
     origin*, direction*: Vec3
 
 const NUMTESTS: int = 5
@@ -86,8 +86,8 @@ proc cost(box: Box, numTriangles: int): float =
   return halfArea * numTriangles.float
 
 proc evaluate(node: Node, axis: int, position: float): float =
-  var boxLeft = new Box
-  var boxRight = new Box
+  var boxLeft  = Box()
+  var boxRight = Box()
   var numLeft, numRight: int
 
   for triangle in node.triangles:
@@ -130,15 +130,16 @@ proc split(node: Node, depth, maxDepth: int) =
   if right.triangles.len > 5: right.split(depth+1, maxDepth)
   if right.triangles.len > 0: node.right = some(right)
 
-proc buildTree*(model: Model, depth: int): Node =
+proc buildTree*(model: Model[MeshVertex], depth: int): Node =
   result = new Node
 
-  for mesh in model.meshes:
-    for i in 0..<mesh.indexedVertices.ebo.len:
+  for name, indMesh in model.meshes.pairs:
+    var mesh = (IndexedBuffer[MeshVertex])indMesh
+    for i in 0..<mesh.indices.len:
       if i mod 3 != 0: continue
-      let vertex1 = mesh.indexedVertices.vbo[mesh.indexedVertices.ebo[i+0]].position
-      let vertex2 = mesh.indexedVertices.vbo[mesh.indexedVertices.ebo[i+1]].position
-      let vertex3 = mesh.indexedVertices.vbo[mesh.indexedVertices.ebo[i+2]].position
+      let vertex1 = mesh.vertices[mesh.indices[i+0]].position
+      let vertex2 = mesh.vertices[mesh.indices[i+1]].position
+      let vertex3 = mesh.vertices[mesh.indices[i+2]].position
       result.encompass @[vertex1, vertex2, vertex3]
 
   result.split(depth=0, maxDepth=depth)

@@ -1,13 +1,13 @@
-import opengl
-
 import ../utils/blas
-import ../utils/bogls
-import ../game/camera
 
 type
-  Light* = ref object
+  Light* = object
     position*, direction*, color*: Vec3
     radiantPower*: float32
+
+proc init*(position, color: Vec3, radiantPower: float): Light =
+  var direction = norm([0'f32, 0, 0].Vec3 - position)
+  Light(position: position, direction: direction, color: color, radiantPower: radiantPower)
 
 proc projectionMatrix*(light: Light): Mat4 =
   let far = 200.0
@@ -37,7 +37,3 @@ proc viewMatrix*(l: Light): Mat4 =
   ].Mat4 * translationMatrix(-l.position)
 
 proc lightMatrix*(l: Light): Mat4 =  projectionMatrix(l) * viewMatrix(l)
-
-proc newLight*(position, color: Vec3, radiantPower: float): Light =
-  var direction = norm([0'f32, 0, 0].Vec3 - position)
-  Light(position: position, direction: direction, color: color, radiantPower: radiantPower)

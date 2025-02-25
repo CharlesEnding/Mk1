@@ -5,23 +5,63 @@ Architecture:
     has models.
     has textures.
     has meshes.
+    has materials.
     has shader programs.
 
   A model:
-    has transform.
+    has transform. (where is the GPU address?)
     has meshes.
 
   A mesh:
-    has vertices.
-    has a material.
+    has vertices. (where is the GPU address?)
+
+  A texture:
+    has a path.
+    has a gpu address.
+    has a load function (this can be our new so we don't need an option for GpuAddr)
 
   A material:
-    has a map of sampler names to textures.
-    has a list of shaders to which it is visible.
-    has a map to shaders to sampler names to gpu addresses.
-    has an init function which fills the gpu address map.
+    has a map of sampler uniforms to textures.
+    has a single shader.
+    has an init function which fills the gpu addresses.
     has an activate function which activates the textures.
 
+Can a mesh be drawn with multiple shaders? Yes.
+Can a mesh be drawn with multiple materials? Yes.
+
+I think the answer is to decouple meshes and materials. Each material has a single shader.
+Then a scene has collections of (mesh, material) pairs. Each collection belongs to a render target.
+
+Refactor:
+  ✔ Change refs to objects @done (25-02-17 13:07)
+  ✔ Remove model inheritance: no AnimatedModel @done (25-02-17 13:07)
+  ✔ Make mesh generic, remove GenericMesh @done (25-02-15 08:06)
+  ✔ Change GPUAddr to ref int so we can keep the address on object copy:   GpuAddr {.requiresInit.} = ref GLuint @done (25-02-15 08:06)
+  ✔ Make the shader itself fetch the uniforms. All glGetUniformLocation should be there in a table, strings given at init. @done (25-02-16 06:18)
+  ✔ Add a better distinction between GPU objects and CPU objects @done (25-02-17 13:05)
+  ✔ Implement textures and cache @done (25-02-17 13:05)
+  ☐ Figure out how to link models to animations to Play state (material? It gets the shader so it should also load the joint matrices)
+  ✘ Move camera to primitives and add use function @cancelled (25-02-18 14:36)
+  ✔ Figure out a good way to share meshes between shaders/rendering target without duplicating them on the GPU? @done (25-02-18 14:36)
+  ✘ Find how to define custom shader behaviour: a place to pass different uniforms for different shaders @cancelled (25-02-18 14:36)
+  ✘ Should I have individual attributes for shadow casters /receivers, refraction recipients? Or should I just use materials?: @cancelled (25-02-18 14:35)
+    Materials are more extensible but attributes are simpler to implement and possibly cleaner?
+    Do we have any use for multiple materials for a single mesh?
+
+
+Mesh Viewer tool:
+  ☐ Display a mesh
+    ☐ Create cube
+    ☐ Create simple shader
+    ☐ Add shadow
+      ☐ Add floor
+  ☐ Enable camera
+  ☐ Add single file imgui
+  ☐ Change mesh
+  ☐ Change material
+  ☐ Change shader
+  ☐ Display skeleton
+  ☐ Display animwated mesh
 
 Tasks:
  ✔ Obj parser @done (25-01-15 18:38)
@@ -34,7 +74,40 @@ Tasks:
  ☐ Folliage
  ☐ Collision
  ☐ Controls
- ☐ Animation
+ ☐ Animation:
+   ✔ Load from GLTF @done (25-02-25 17:57)
+     ✔ Load joints hierarchy @done (25-02-25 17:57)
+       ✔ Parse nodes json to sequence @done (25-02-08 06:54)
+       ✔ Make a proc that takes a root node @done (25-02-08 16:05)
+       ✔ Recursively fill the hierarchy @done (25-02-08 16:05)
+       ✔ Get rid of custom blas @done (25-02-08 07:38)
+       ✔ Compute joint transforms @done (25-02-08 16:05)
+       ✘ Load inverse bind matrix @cancelled (25-02-11 19:54)
+     ✔ Load channels @done (25-02-09 02:22)
+       ✔ Parse animations json @done (25-02-08 07:02)
+       ✔ Modify jointid to be nodeid @done (25-02-08 18:45)
+       ✔ Load keyframes into joints @done (25-02-09 02:22)
+         ✔ Iterate over channels @done (25-02-09 02:22)
+   ✔ Setup system @done (25-02-25 17:56)
+     ✔ Make mesh generic @done (25-02-11 04:27)
+     ✔ Setup animated model @done (25-02-11 04:27)
+     ✔ Tie into scene rendering @done (25-02-25 17:56)
+     ✔ Play animation @done (25-02-25 17:56)
+       ✔ Store all animations on model load @done (25-02-25 17:56)
+       ✘ Add timer for animation @cancelled (25-02-25 17:56)
+       ✔ Update in scene loop @done (25-02-25 17:56)
+   ☐ Setup shaders
+     ✔ Copy lit @done (25-02-11 19:39)
+     ✔ Edit vertex layout @done (25-02-11 19:39)
+       ✔ Modify setupLayout function @done (25-02-11 19:39)
+     ✔ Add shader program @done (25-02-11 19:53)
+     ✔ Set character model material to use this shader @done (25-02-11 19:53)
+     ☐ Add joint calculation to vertex
+       ✔ Joint hierarchy to array @done (25-02-25 17:56)
+       ✔ Pass array to uniforms @done (25-02-25 17:56)
+       ✔ Update array in rendering loop @done (25-02-25 17:56)
+       ✔ Add position calculation @done (25-02-12 02:02)
+       ☐ Add normal calculation
  ☐ Particles
  ☐ UI
  ☐ NPCs
@@ -82,9 +155,34 @@ Jalons:
  ✔ Model is loaded @done (25-01-19 03:03)
  ✔ Scene is lit @done (25-01-19 03:03)
  ✔ Water is shaded @done (25-01-19 03:03)
- ☐ Character is animated
+ ✔ Character is animated @done (25-02-25 17:56)
  ✔ Character can move @done (25-01-24 18:33)
 
 An eye rolling around the character's base on the ground indicates the way he's looking
 We can call out to players to get their attention
 Level cap is not raised, rather extensions introduce enemies strong/weak to a specific armor/weapon type
+
+---------------------
+How to avoid all nil errors from non-initializations?
+Model = ref object
+  play: PlayRef
+
+play can be nil
+
+Potential solutions ->
+  1. Always use defaults for ref object fields (not sure it's possible for refs unless the defauult is const)
+  2. Force object creation to go through newObject function which initiates all fields
+  3. {.requiresInit.}
+  4. not nil
+  5. Stop using refs entirely
+----------------------
+
+----------------------
+Semantic highlighting custom rules ->
+  Type of fields which are refs in red to remember to put {.requireinit.}
+
+Mistakes I made implementing my skeletal animation system:
+  1. Wrong sign in one of the terms of the rotation matrix calculation -> Should have written unit tests.
+  2. Wrong skinning in the animated vertices -> The joint ids use the skinning joints list to reindex the joints.
+  3. Wrong calculation of the animation matrix -> The animated transform is combined with the joint transform when it has a missing rotation or translation component.
+  4.

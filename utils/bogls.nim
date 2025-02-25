@@ -1,8 +1,6 @@
 # Basic OpenGL Subprograms
 import macros
-import std/enumerate
-import std/tables
-import std/sequtils
+import std/[enumerate, paths, strformat, tables]
 
 import opengl
 import stb_image/read as stbi
@@ -13,74 +11,58 @@ import blas
 
 type
   VertexBuffer*[T]  = seq[T]
+
   IndexBuffer*      = seq[uint32]
-  IndexedBuffer*[T] = ref object
-    vbo*: VertexBuffer[T]
-    ebo*: IndexBuffer
-  GpuAddr* = GLuint
-  IndexedBufferAddr* = ref object
-    vbo*, ebo*: GpuAddr
 
+  IndexedBuffer*[T] = object
+    vertices*: VertexBuffer[T]
+    indices*:  IndexBuffer
 
-proc indexVertices*[T](vbo: VertexBuffer[T]): IndexedBuffer[T] = # T is a vertex type (e.g: Vec3[float32]).
+  GpuId* = GLuint
+  IndexedBufferGpuId* = object
+    verticesId*, indicesId*: GpuId
+
+var activeTexture: GLint = 0
+
+proc glePointer*[T](data: ptr T): ptr GLfloat = cast[ptr GLFloat](data)
+
+proc gleNextActiveTexture*(): GLint = result = activeTexture; activeTexture += 1
+
+proc gleResetActiveTextureCount*() = activeTexture = 0.GLint
+
+proc gleGetUniformId*(programId: GpuId, uniformName, shaderName: string): GpuId {.inline.} =
+  var maybeUniformId = glGetUniformLocation(programId, uniformName)
+  if maybeUniformId == -1: raise newException(KeyError, &"Uniform '{uniformName}' not found in {shaderName} shader.")
+  return maybeUniformId.GLuint
+
+proc gleGetActiveProgram*(): GLint {.inline.} = glGetIntegerv(GL_CURRENT_PROGRAM, result.addr)
+
+proc indexVertices*[T](vertices: VertexBuffer[T]): IndexedBuffer[T] {.inline.} = # T is a vertex type like MeshVertex
   # I tried a bunch of optimizations with orderedsets and such, this is the best I could do.
-  result = new IndexedBuffer[T]
-  var vertices = initTable[T, uint32]()
-  for v in vbo:
-    if not vertices.hasKeyOrPut(v, len(vertices).uint32): result.vbo.add(v)
-    result.ebo.add(vertices[v])
+  var vertexToIndex = initTable[T, uint32]()
+  for v in vertices:
+    if not vertexToIndex.hasKeyOrPut(v, len(vertexToIndex).uint32): result.vertices.add(v)
+    result.indices.add(vertexToIndex[v])
 
+proc toGpu*[T](indexedBuffer: IndexedBuffer[T]): IndexedBufferGpuId {.inline.} =
+  assert indexedBuffer.vertices.len > 0 and indexedBuffer.indices.len > 0, "Empty index buffer."
+  glCreateBuffers(1, result.verticesId.addr)
+  glNamedBufferData(result.verticesId, indexedBuffer.vertices.len * sizeof(T),    indexedBuffer.vertices[0].addr, GL_STATIC_DRAW)
+  glCreateBuffers(1, result.indicesId.addr)
+  glNamedBufferData(result.indicesId,  indexedBuffer.indices.len * sizeof(GLUint), indexedBuffer.indices[0].addr,  GL_STATIC_DRAW)
 
-proc toGpu*[T](indexedBuffer: var IndexedBuffer[T], vertexSize: int): IndexedBufferAddr =
-  assert indexedBuffer.vbo.len > 0 and indexedBuffer.ebo.len > 0, "Empty index buffer."
-  result = new IndexedBufferAddr
-  glGenBuffers(1, result.vbo.addr)
-  glBindBuffer(GL_ARRAY_BUFFER, result.vbo)
-  glBufferData(GL_ARRAY_BUFFER, indexedBuffer.vbo.len * sizeof(GLFloat) * vertexSize, indexedBuffer.vbo[0].addr, GL_STATIC_DRAW)
-
-  glGenBuffers(1, result.ebo.addr)
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, result.ebo)
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexedBuffer.ebo.len * sizeof(GLUint), indexedBuffer.ebo[0].addr, GL_STATIC_DRAW)
-
-
-proc setupArrayLayout*(fieldSizes: seq[int]) =
-  let vertexSize: int = fieldSizes.foldl(a + b)
+proc setupArrayLayout*[T](vertex: T, verticesId, indicesId: GpuId) =
   var offset: int = 0
-  for i, fieldSize in enumerate(fieldSizes):
+  glBindBuffer(GL_ARRAY_BUFFER, verticesId)
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesId)
+  for i, fname, field in enumerate(vertex.fieldPairs()):
+    assert field is array, "Implement non-array types for vertex fields. Use 'when field is array:...'."
+    var itemType: GLenum = when field[0].type is float32: cGL_FLOAT else: cGL_UNSIGNED_SHORT #uint16
     glEnableVertexAttribArray(i.GLuint)
-    glVertexAttribPointer(i.GLuint, fieldSize.GLint, cGL_FLOAT, GL_FALSE, (vertexSize*sizeof(GLFloat)).GLsizei, cast[pointer](offset*sizeof(GLfloat)))
-    offset += fieldSize
+    glVertexAttribPointer(i.GLuint, field.len().GLint, itemType, GL_FALSE, sizeof(vertex).GLsizei, cast[pointer](offset))
+    offset += sizeof(field)
 
-
-macro layoutVertexArray*(t: typedesc, vertexArray: untyped, meshVertex: untyped): untyped =
-  result = newStmtList()
-  result.add quote do:
-    var stride = sizeof(`t`)
-    glGenVertexArrays(1, `vertexArray`.addr)
-    glBindVertexArray(`vertexArray`)
-
-  var tTypeImpl = t.getImpl
-  # TypeDef
-  #   > Sym "MyTypeName", Empty, ObjectTy
-  #                                > Empty, Empty, RecList
-  #                                                  > IdentDefs
-  #                                                    > Postfix
-  #                                                     > Ident "*", Ident "MyFirstFieldName"
-  tTypeImpl = tTypeImpl[2][2] # -> ObjectTy -> RecList
-  echo tTypeImpl.treeRepr
-  for i, child in enumerate(tTypeImpl.children):
-    assert child.kind == nnkIdentDefs, "Unexpected type AST."
-    let field = child[0][1]
-    echo field
-    result.add quote do:
-      glEnableVertexAttribArray(`i`.GLuint)
-      glVertexAttribPointer(`i`, `meshVertex`.`field`.len, cGL_FLOAT, GL_FALSE, stride, cast[pointer](offsetof(`t`, `meshVertex`.`field`)))
-
-  result.add quote do:
-    glBindVertexArray(0)
-
-
-proc checkStatus*(objectId: GLuint, objectType: Glenum) =
+proc checkStatus*(objectId: GLuint, objectType: Glenum) {.inline.} =
   var success, logSize: GLint
   var objectInterface = case objectType:
     of GL_SHADER:  (getInfo: glGetShaderiv,  getLog: glGetShaderInfoLog,  status: GL_COMPILE_STATUS, name: "Shader")
@@ -99,8 +81,7 @@ proc checkStatus*(objectId: GLuint, objectType: Glenum) =
   else:
     echo objectInterface.name  & " preparation successful."
 
-
-proc compileShader*(shaderText: string, shaderType: GLenum): GLuint {.inline.} =
+proc compileShader*(shaderText: string, shaderType: GLenum): GpuId {.inline.} =
   result = glCreateShader(shaderType)
   let cshaderText = shaderText.cstring
   var shaderSource = cast[cstringarray](cshaderText.addr)
@@ -108,10 +89,9 @@ proc compileShader*(shaderText: string, shaderType: GLenum): GLuint {.inline.} =
   glCompileShader(result)
   checkStatus(result, GL_SHADER)
 
-
-proc compileShaders*(vertexShaderPath, fragmentShaderPath: string): GLuint =
-  let vertexShaderText   = readFile(vertexShaderPath)
-  let fragmentShaderText = readFile(fragmentShaderPath)
+proc compileShaders*(vertexShaderPath, fragmentShaderPath: Path): GpuId {.inline.} =
+  let vertexShaderText   = readFile(vertexShaderPath.string)
+  let fragmentShaderText = readFile(fragmentShaderPath.string)
 
   var vertexShader   = compileShader(vertexShaderText,   GL_VERTEX_SHADER)
   var fragmentShader = compileShader(fragmentShaderText, GL_FRAGMENT_SHADER)
@@ -121,10 +101,9 @@ proc compileShaders*(vertexShaderPath, fragmentShaderPath: string): GLuint =
   glAttachShader(result, fragmentShader)
   glLinkProgram(result)
 
-
-proc loadTexture*(data: seq[byte]; width, height: int; textureID: var GLUint) {.inline.} =
-  glGenTextures(1, textureID.addr)
-  glBindTexture(GL_TEXTURE_2D, textureID)
+proc loadTexture*(data: seq[byte]; width, height: int): GpuId {.inline.} =
+  glGenTextures(1, result.addr)
+  glBindTexture(GL_TEXTURE_2D, result)
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT)
@@ -135,18 +114,12 @@ proc loadTexture*(data: seq[byte]; width, height: int; textureID: var GLUint) {.
   glGenerateMipmap(GL_TEXTURE_2D)
   glBindTexture(GL_TEXTURE_2D, 0)
 
-proc loadTextureFromBuffer*(buffer: seq[byte]; textureID: var GLUint) {.inline.} =
+proc loadTextureFromBuffer*(buffer: seq[byte]): GpuId {.inline.} =
   var width, height, channels: int
   let data: seq[byte] = loadFromMemory(buffer, width, height, channels, 4)
-  loadTexture(data, width, height, textureID)
+  loadTexture(data, width, height)
 
-proc loadTexture*(filepath: string, textureID: var GLUint) {.inline.} =
+proc loadTexture*(filepath: string): GpuId {.inline.} =
   var width, height, channels: int
   let data: seq[byte] = stbi.load(filepath, width, height, channels, 4)
-  loadTexture(data, width, height, textureID)
-
-
-# Interface:
-  # Pass camera transform
-  # Pass model transform
-  # Texture.toGpu()
+  loadTexture(data, width, height)

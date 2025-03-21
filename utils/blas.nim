@@ -246,7 +246,23 @@ proc eulerAngles*(mat: Mat4): Vec3 {.inline.} =
       arctan2(-m[0][2], sy)      * 180 / 3.14,
       arctan2( m[0][1], m[0][0]) * 180 / 3.14
     ].Vec3
+proc euler2quaternion*(euler: Vec3): Vec4 {.inline.} =
+  var cr: float = cos(euler.x * 0.5)
+  var sr: float = sin(euler.x * 0.5)
+  var cp: float = cos(euler.y * 0.5)
+  var sp: float = sin(euler.y * 0.5)
+  var cy: float = cos(euler.z * 0.5)
+  var sy: float = sin(euler.z * 0.5)
 
+  [
+    (cr * cp * cy + sr * sp * sy).float32,
+    (sr * cp * cy - cr * sp * sy).float32,
+     cr * sp * cy + sr * cp * sy,
+     cr * cp * sy - sr * sp * cy,
+  ]
+proc direction2quaternion*(direction: Vec3): Vec4 {.inline.} =
+  var angle = arctan2(direction.x, direction.z)
+  return [0'f32, 1*sin(angle/2.0), 0, cos(angle/2.0)]
 
 const NO_SCALE*: Vec3 = [1'f32, 1, 1].Vec3
 proc scaleMatrix*(v: Vec3): Mat4 {.inline.} =

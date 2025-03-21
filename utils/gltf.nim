@@ -270,9 +270,9 @@ proc echoHierarchy(joint: animation.Joint, depth: int = 0) =
   for child in joint.children:
     echoHierarchy(child, depth+1)
 
-proc loadObj*[T](path, filename: string, t: T): Model[T] =
+proc loadObj*[T](path: string, t: T): Model[T] =
   #TODO: Add file existence check
-  let stream = newFileStream(path & "/" & filename, fmRead)
+  let stream = newFileStream(path, fmRead)
   defer: stream.close()
 
   let header = readGlbHeader(stream)

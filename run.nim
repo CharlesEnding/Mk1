@@ -4,9 +4,9 @@ import opengl
 import glfw
 
 import controller
-import game/[player, camera, timing]
+import game/[camera, movement, timing, character]
 import physics/collision
-import primitives/[scene, rendertarget, light, material, mesh, model, shader, texture, animation]
+import primitives/[scene, renderable, rendertarget, light, material, mesh, model, shader, texture, animation]
 import utils/[blas, gltf, bogls]
 
 var
@@ -14,9 +14,10 @@ var
   playerCamera: ThirdPersonCamera
   mainLight: Light = light.init([60'f32, 80, -80].Vec3, [0.98'f32, 0.77, 0.51].Vec3, 700.0)
   rootScene: Scene
-  mplayer: Player
   BVH: Node
   mtiming: Timing
+  inputs: InputController = InputController()
+  playerChar, npc1: Character
 
 proc init(): Window =
   glfw.initialize()
@@ -47,11 +48,10 @@ proc init(): Window =
   enableAutoGLerrorCheck(true)
 
   mtiming = newTiming()
-  mplayer = newPlayer()
-  proc mplayerHook(numTicks: int) =
-    for i in 0..<numTicks:
-      mplayer.move()
-  mtiming.register(mplayerHook)
+  # proc mplayerHook(numTicks: int) =
+  #   for i in 0..<numTicks:
+  #     mplayer.move()
+  # mtiming.register(mplayerHook)
 
   rootScene = new Scene
   rootScene.sun = mainLight
@@ -74,40 +74,62 @@ proc init(): Window =
   rootScene.shaders.add Shader(id: 4.ShaderId, path: "shaders".Path, name: "refraction", uniforms: @[uTime, uProjection, uView, uModel, uAlbedo]).toGpu()
   rootScene.shaders.add Shader(id: 5.ShaderId, path: "shaders".Path, name: "anim",       uniforms: @[uProjection, uView, uModel, uSun, uJoints, uAlbedo, uShadowMap]).toGpu()
 
-  var map: Model[MeshVertex] = gltf.loadObj[MeshVertex]("assets/MacAnu", "MacAnu.glb", MeshVertex())
-  rootScene.models.add map.toGpu()
+  # var map: Model[MeshVertex] = gltf.loadObj[MeshVertex]("assets/MacAnu", "MacAnu.glb", MeshVertex())
+  var map: RenderableBehaviourRef = load("assets/MacAnu/MacAnu.glb".Path, animated=false)
+  rootScene.renderables.add map
 
+  playerChar = createPlayer()
+  rootScene.renderables.add playerChar.renderable.get()
+
+  npc1 = createNpc()
+  rootScene.renderables.add npc1.renderable.get()
   # var characterModel: Model[MeshVertex] = gltf.loadObj[MeshVertex]("assets/Mistral", "Mistral.glb", MeshVertex())
-  var characterModel: Model[AnimatedMeshVertex] = gltf.loadObj[AnimatedMeshVertex]("assets", "Fox.glb", AnimatedMeshVertex())
-  rootScene.models.add characterModel.toGpu()
+  # var characterModel: Model[AnimatedMeshVertex] = gltf.loadObj[AnimatedMeshVertex]("assets", "Fox.glb", AnimatedMeshVertex())
+  # rootScene.models.add characterModel.toGpu()
 
-  var collisionModel: Model[MeshVertex] = gltf.loadObj[MeshVertex]("assets/MacAnu", "MacAnu_collison.glb", MeshVertex())
+  var collisionModel: Model[MeshVertex] = gltf.loadObj[MeshVertex]("assets/MacAnu/MacAnu_collison.glb", MeshVertex())
   BVH = buildTree(collisionModel, 10)
-  mplayer.feet = [0'f32, 0, 0].Vec3
-  mplayer.position = BVH.getHeight(mplayer.feet)
-  rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet)
+  # mplayer.feet = [0'f32, 0, 0].Vec3
+  # mplayer.position = BVH.getHeight(mplayer.feet)
+  # rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet)
 
   playerCamera = newThirdPersonCamera(
-    target      = mplayer.position + [0'f32, 1.6, 0].Vec3,
+    # target      = mplayer.position + [0'f32, 1.6, 0].Vec3,
+    target      = BVH.getHeight([0'f32, 0, 0]) + [0'f32, 1.6, 0].Vec3,
     position    = [0'f32, 5.15, -4].Vec3,
     minDistance = 3.0,
     maxDistance = 20.0,
     fulcrum     = fulcrum
   )
 
-  controller.setup(win, playerCamera, mainLight, mplayer)#, collisionSystem)
+  inputs.setup(win)#, collisionSystem)
 
   return win
 
 proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
 
-  mplayer.position = BVH.getHeight(mplayer.position)
-  rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet) * scaleMatrix([0.01'f32, 0.01, 0.01])
+  var dir: Vec3 = inputs.pollDirection(playerCamera)
+  playerChar.movement = playerChar.movement.get().updateSpeed(dir).some()
+  playerChar = playerChar.update()
+  playerChar.spatial = playerChar.spatial.get().updateHeight(playerChar.grounded.get(), BVH).some()
 
-  playerCamera.followPlayer(mplayer.position + [0'f32, 1.6, 0].Vec3)
+  npc1 = npc1.update()
+  npc1.spatial = npc1.spatial.get().updateHeight(npc1.grounded.get(), BVH).some()
+
+  if inputs.consumePrintDebug():
+    echo playerChar.spatial.get().position
+  # mplayer.position = BVH.getHeight(mplayer.position)
+  # rootScene.models[^1].transform = translationMatrix(mplayer.position-mplayer.feet) * scaleMatrix([0.01'f32, 0.01, 0.01])
+
+  var orbitDelta: float = inputs.consumeCameraOrbitDelta()
+  playerCamera.orbit(orbitDelta)
+  var zoomOffset: float = inputs.consumeCameraZoomOffset()
+  playerCamera.zoom(zoomOffset)
+
+  playerCamera.followPlayer(playerChar.spatial.get().position + [0'f32, 1.6, 0].Vec3)
 
   var savedCameraDistance = playerCamera.distance
-  var ray: Ray = Ray(origin: mplayer.position + [0'f32, 1.6, 0].Vec3, direction: playerCamera.w)
+  var ray: Ray = Ray(origin: playerChar.spatial.get().position + [0'f32, 1.6, 0].Vec3, direction: playerCamera.w)
   var closest = none(Intersection)
   closest = ray.findIntersection(BVH, closest)
   if closest.isSome():

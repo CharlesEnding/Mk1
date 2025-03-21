@@ -6,12 +6,14 @@ import model
 import shader
 import light
 import rendertarget
+import renderable
 
 import opengl
 
 type
   Scene* {.requiresInit.} = ref object
-    models*:  seq[ModelOnGpu]
+    # models*:  seq[ModelOnGpu]
+    renderables*: seq[RenderableBehaviourRef]
     shaders*: seq[ShaderOnGpu]
     previousPasses*: seq[RenderTarget]
     sun*: Light
@@ -33,9 +35,9 @@ proc use*(scene: Scene, playerCamera: Camera, shader: ShaderOnGpu) =
   if shader.uniforms.hasKey(SUN_MATRIX_UNIFORM):        glUniformMatrix4fv(shader.uniforms[SUN_MATRIX_UNIFORM].GLint,        1, true, glePointer(l.addr))
   if shader.uniforms.hasKey(TIME_UNIFORM): glUniform1f(shader.uniforms[TIME_UNIFORM].GLint, time)
 
-proc draw*(scene: Scene, playerCamera: Camera, drawnShaders: seq[ShaderId] = @[]) =
+proc draw*(scene: Scene, playerCamera: Camera, shadersToDraw: seq[ShaderId] = @[]) =
   for shader in scene.shaders:
-    if drawnShaders.len > 0 and shader.id notin drawnShaders: continue
+    if shadersToDraw.len > 0 and shader.id notin shadersToDraw: continue
     shader.use()
     scene.use(playerCamera, shader)
 
@@ -43,8 +45,8 @@ proc draw*(scene: Scene, playerCamera: Camera, drawnShaders: seq[ShaderId] = @[]
       if shader.uniforms.hasKey(pass.sampler):
         pass.useTexture(shader.uniforms)
 
-    for model in scene.models:
-      model.draw(shader)
+    for renderable in scene.renderables:
+      renderable.model.draw(shader)
 
     gleResetActiveTextureCount()
   glUseProgram(0)

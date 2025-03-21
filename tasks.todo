@@ -67,14 +67,29 @@ Tasks:
  ✔ Obj parser @done (25-01-15 18:38)
  ✔ Mtl parser @done (25-01-17 12:24)
  ✔ Mesh @done (25-01-17 13:17)
- ☐ Camera
+ ✔ Camera @done (25-02-25 18:21)
  ✔ Skybox @done (25-01-17 13:17)
  ☐ Water
+   ✔ Refraction @done (25-02-25 18:19)
+   ☐ Depth
+   ☐ Reflection
  ☐ Lights and shadows
+   ✔ Sun @done (25-02-25 18:20)
+   ☐ Individual lights
+   ☐ Map shadows
+   ☐ Character decal shadows
  ☐ Folliage
  ☐ Collision
+   ✔ Floor @done (25-02-25 18:21)
+   ✔ Camera @done (25-02-25 18:21)
+   ☐ Walls
+   ☐ Character to character
  ☐ Controls
- ☐ Animation:
+   ✔ Animated model @done (25-03-21 13:18)
+   ✔ Speed @done (25-03-21 13:19)
+   ✔ Orientation @done (25-03-21 13:18)
+   ☐ Animation transition
+ ☐ Skeletal Animation:
    ✔ Load from GLTF @done (25-02-25 17:57)
      ✔ Load joints hierarchy @done (25-02-25 17:57)
        ✔ Parse nodes json to sequence @done (25-02-08 06:54)
@@ -109,13 +124,32 @@ Tasks:
        ✔ Add position calculation @done (25-02-12 02:02)
        ☐ Add normal calculation
  ☐ Particles
+   ☐ Character steps (doesn't appear on first step (delay), no paticle when walking only running, not lit)
+   ☐ Teleportation halo
  ☐ UI
+   ☐ Chatter (visible over everything, threshold distance, fade out, remains the same size regardless of distance)
+   ☐ Chatter arrangement (they move to stack vertically if there is an overlap)
+   ☐ Dialog
  ☐ NPCs
+   ☐ Spawning
+   ✔ Routes @done (25-03-21 13:41)
+   ☐ Appearance
+   ☐ Weapons
  ☐ Sounds
  ☐ Music
  ☐ Inventory
+ ☐ Weapons
  ☐ Multiplayer
+   ☐ Character creation
+   ☐ Movement
+   ☐ Dialog
  ✔ Fog @done (25-01-25 12:07)
+ ☐ Polish
+   ☐ Fog distance
+   ☐ Sun colour
+   ☐ Light colours and intensities
+   ☐ Camera collision mesh
+   ☐ Profiling
 
 Other maps tasks:
  ☐ Volumetric Fog
@@ -124,6 +158,8 @@ Other maps tasks:
  ☐ rain
  ☐ horizon fade
  ☐ special effects (spells)
+ ☐ Morph target animation
+ ☐ Content
 
 Intermediary tasks:
   ✔ Fog @done (25-01-24 14:38)
@@ -149,6 +185,10 @@ Intermediary tasks:
   ☐ Inverted faces leading to bad normals
   ✔ Shader for sky @done (25-01-19 03:54)
   ✔ Shader for transparent meshes @done (25-01-19 03:54)
+
+Things I want to implement:
+  ☐ Deep Contextual Chatter coupled with audio emotes
+  ☐ Photography and photography events
 
 
 Jalons:

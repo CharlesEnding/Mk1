@@ -32,8 +32,9 @@ void main()
   jointColor = in_JointIds / 22.0;// * jointTransforms[0][1];;// / 2000.0; //skinMatrix[3];
   gl_Position = projMatrix * viewMatrix * modelMatrix * skinMatrix * vec4(in_Position, 1.0);
   UV = vec2(in_UV.x, -in_UV.y);; //vec2(in_Position.x, in_Position.y);
-  position = in_Position;
-  normal = in_Normal;
-  positionLightSpace = lightMatrix * vec4(in_Position, 1.0);
+  //position = (modelMatrix * skinMatrix * vec4(in_Position, 1.0)).xyz;
+  position = (modelMatrix * vec4(in_Position, 1.0)).xyz;
+  normal = normalize((modelMatrix * skinMatrix * vec4(in_Normal, 0.0)).xyz);
+  positionLightSpace = lightMatrix * modelMatrix * skinMatrix * vec4(in_Position, 1.0); //vec4(in_Position, 1.0);
   V_EyeSpacePos= viewMatrix * modelMatrix * vec4(in_Position, 1.0);
 }

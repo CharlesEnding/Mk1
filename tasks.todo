@@ -89,7 +89,8 @@ Tasks:
    ✔ Speed @done (25-03-21 13:19)
    ✔ Orientation @done (25-03-21 13:18)
    ☐ Animation transition
- ☐ Skeletal Animation:
+   ☐ Multidevice inputs
+ ✔ Skeletal Animation: @done (25-03-25 20:17)
    ✔ Load from GLTF @done (25-02-25 17:57)
      ✔ Load joints hierarchy @done (25-02-25 17:57)
        ✔ Parse nodes json to sequence @done (25-02-08 06:54)
@@ -111,25 +112,42 @@ Tasks:
        ✔ Store all animations on model load @done (25-02-25 17:56)
        ✘ Add timer for animation @cancelled (25-02-25 17:56)
        ✔ Update in scene loop @done (25-02-25 17:56)
-   ☐ Setup shaders
+   ✔ Setup shaders @done (25-03-25 20:17)
      ✔ Copy lit @done (25-02-11 19:39)
      ✔ Edit vertex layout @done (25-02-11 19:39)
        ✔ Modify setupLayout function @done (25-02-11 19:39)
      ✔ Add shader program @done (25-02-11 19:53)
      ✔ Set character model material to use this shader @done (25-02-11 19:53)
-     ☐ Add joint calculation to vertex
+     ✔ Add joint calculation to vertex @done (25-03-25 20:17)
        ✔ Joint hierarchy to array @done (25-02-25 17:56)
        ✔ Pass array to uniforms @done (25-02-25 17:56)
        ✔ Update array in rendering loop @done (25-02-25 17:56)
        ✔ Add position calculation @done (25-02-12 02:02)
-       ☐ Add normal calculation
+       ✔ Add normal calculation @done (25-03-25 20:17)
  ☐ Particles
+   ✔ Shader @done (25-03-25 16:23)
+   ☐ Make particles renderables
+   ☐ Texture
+     ☐ Billboarding
+     ☐ Atlas
+   ☐ Logic
+     ✔ Particle @done (25-03-25 16:23)
+     ✔ Emitter @done (25-03-25 16:23)
+     ✔ Container @done (25-03-25 16:23)
+     ☐ Movement
+     ☐ Sorting
    ☐ Character steps (doesn't appear on first step (delay), no paticle when walking only running, not lit)
+     ☐ Scale * 2 over life
+     ☐ Life: 3 seconds
+     ☐ Texture billboard
    ☐ Teleportation halo
  ☐ UI
    ☐ Chatter (visible over everything, threshold distance, fade out, remains the same size regardless of distance)
    ☐ Chatter arrangement (they move to stack vertically if there is an overlap)
    ☐ Dialog
+     ☐ Targetting
+     ☐ Interaction
+     ☐ Menus
  ☐ NPCs
    ☐ Spawning
    ✔ Routes @done (25-03-21 13:41)
@@ -150,6 +168,21 @@ Tasks:
    ☐ Light colours and intensities
    ☐ Camera collision mesh
    ☐ Profiling
+ ☐ Platform independence
+   ☐ Windows
+     ☐ 10 (54%)
+     ☐ 11 (44%)
+   ☐ SteamOS
+   ☐ Resolutions
+     ☐ 1920x1080 (50%)
+     ☐ 2560x1440 (30%)
+   ☐ Multiscreen
+   ☐ Inputs
+     ☐ Controllers
+     ☐ Keyboard & mouse
+ ☐ Localization support
+   ☐ Text import/export system
+   ☐ Standard format support for translation software
 
 Other maps tasks:
  ☐ Volumetric Fog

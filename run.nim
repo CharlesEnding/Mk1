@@ -6,7 +6,7 @@ import glfw
 import controller
 import game/[camera, movement, timing, character]
 import physics/collision
-import primitives/[scene, renderable, rendertarget, light, material, mesh, model, shader, texture, animation]
+import primitives/[scene, renderable, rendertarget, light, material, mesh, model, shader, texture, animation, particles]
 import utils/[blas, gltf, bogls]
 
 var
@@ -18,6 +18,11 @@ var
   mtiming: Timing
   inputs: InputController = InputController()
   playerChar, npc1: Character
+  dirtContainer: ParticleContainerRef
+  dirtEmitter: ParticleEmitter
+
+const PROJECTION_MATRIX_UNIFORM = Uniform(name:"projMatrix", kind:ukValues)
+const VIEW_MATRIX_UNIFORM = Uniform(name:"viewMatrix",  kind:ukValues)
 
 proc init(): Window =
   glfw.initialize()
@@ -28,7 +33,7 @@ proc init(): Window =
   cfg.size      = (w: 1280, h: 800)
   cfg.title     = "Mac Anu"
   cfg.resizable = true
-  cfg.version   = glv33
+  cfg.version   = glv44
   cfg.profile   = opCoreProfile
 
   var win = newWindow(cfg)
@@ -73,13 +78,25 @@ proc init(): Window =
   rootScene.shaders.add Shader(id: 3.ShaderId, path: "shaders".Path, name: "shadow",     uniforms: @[uSun]).toGpu()
   rootScene.shaders.add Shader(id: 4.ShaderId, path: "shaders".Path, name: "refraction", uniforms: @[uTime, uProjection, uView, uModel, uAlbedo]).toGpu()
   rootScene.shaders.add Shader(id: 5.ShaderId, path: "shaders".Path, name: "anim",       uniforms: @[uProjection, uView, uModel, uSun, uJoints, uAlbedo, uShadowMap]).toGpu()
+  rootScene.shaders.add Shader(id: 6.ShaderId, path: "shaders".Path, name: "particle",   uniforms: @[uProjection, uView]).toGpu()
 
   # var map: Model[MeshVertex] = gltf.loadObj[MeshVertex]("assets/MacAnu", "MacAnu.glb", MeshVertex())
+
   var map: RenderableBehaviourRef = load("assets/MacAnu/MacAnu.glb".Path, animated=false)
   rootScene.renderables.add map
 
   playerChar = createPlayer()
   rootScene.renderables.add playerChar.renderable.get()
+
+  # var dirtMesh: VertexBuffer[ParticleVertex] = @[
+  #   ParticleVertex(position: [-0.5f32, 0.0, -0.5]),
+  #   ParticleVertex(position: [ 0.5f32, 0.0, -0.5]),
+  #   ParticleVertex(position: [-0.5f32, 0.0,  0.5]),
+  #   ParticleVertex(position: [ 0.5f32, 0.0,  0.5]),
+  # ]
+  # dirtContainer = initParticleContainer(dirtMesh)
+  dirtContainer = initParticleContainer()
+  dirtEmitter = ParticleEmitter(translation: [0.0'f32, 5, 0], life: 10.0'f32, scale: 1.0'f32, isEnabled: true, container: dirtContainer)
 
   npc1 = createNpc()
   rootScene.renderables.add npc1.renderable.get()
@@ -107,6 +124,9 @@ proc init(): Window =
   return win
 
 proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
+
+  dirtEmitter = dirtEmitter.update()
+  dirtContainer.update()
 
   var dir: Vec3 = inputs.pollDirection(playerCamera)
   playerChar.movement = playerChar.movement.get().updateSpeed(dir).some()
@@ -163,6 +183,15 @@ proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
   targetDefault()
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
   rootScene.draw(playerCamera.Camera, @[0, 1, 2, 5]) #, mainLight, depthTarget, refractionTarget)
+
+  var shader6 = rootScene.shaders[^1]
+  shader6.use()
+  var p = playerCamera.projectionMatrix()
+  var v = playerCamera.viewMatrix()
+  glUniformMatrix4fv(shader6.uniforms[PROJECTION_MATRIX_UNIFORM].GLint, 1, true, glePointer(p.addr))
+  glUniformMatrix4fv(shader6.uniforms[VIEW_MATRIX_UNIFORM].GLint,       1, true, glePointer(v.addr))
+  dirtContainer.draw()
+
 
   playerCamera.distance = savedCameraDistance
   playerCamera.updatePosition()

@@ -1,3 +1,5 @@
+import std/options
+
 import opengl
 
 import ../utils/[blas, bogls]
@@ -22,7 +24,7 @@ proc toGpu*[T](indexedMesh: IndexedMesh[T]): MeshOnGpu =
   result.bufferRef  = IndexedBuffer[T](indexedMesh).toGpu()
   glCreateVertexArrays(1, result.vertexLayoutId.addr)
   glBindVertexArray(result.vertexLayoutId)
-  setupArrayLayout(T(), result.bufferRef.verticesId, result.bufferRef.indicesId)
+  discard setupArrayLayout(T(), result.bufferRef.verticesId, result.bufferRef.indicesId.some())
   glBindVertexArray(0)
 
 proc draw*(gpuMesh: MeshOnGpu) =

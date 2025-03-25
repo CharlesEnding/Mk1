@@ -1,6 +1,6 @@
 # Basic OpenGL Subprograms
 import macros
-import std/[enumerate, paths, strformat, tables]
+import std/[enumerate, options, paths, strformat, tables]
 
 import opengl
 import stb_image/read as stbi
@@ -44,6 +44,11 @@ proc indexVertices*[T](vertices: VertexBuffer[T]): IndexedBuffer[T] {.inline.} =
     if not vertexToIndex.hasKeyOrPut(v, len(vertexToIndex).uint32): result.vertices.add(v)
     result.indices.add(vertexToIndex[v])
 
+proc toGpu*[T](vertexBuffer: VertexBuffer[T]): GpuId {.inline.} =
+  assert vertexBuffer.len > 0, "Empty vertex buffer."
+  glCreateBuffers(1, result.addr)
+  glNamedBufferData(result, vertexBuffer.len * sizeof(T), vertexBuffer[0].addr, GL_STATIC_DRAW)
+
 proc toGpu*[T](indexedBuffer: IndexedBuffer[T]): IndexedBufferGpuId {.inline.} =
   assert indexedBuffer.vertices.len > 0 and indexedBuffer.indices.len > 0, "Empty index buffer."
   glCreateBuffers(1, result.verticesId.addr)
@@ -51,16 +56,24 @@ proc toGpu*[T](indexedBuffer: IndexedBuffer[T]): IndexedBufferGpuId {.inline.} =
   glCreateBuffers(1, result.indicesId.addr)
   glNamedBufferData(result.indicesId,  indexedBuffer.indices.len * sizeof(GLUint), indexedBuffer.indices[0].addr,  GL_STATIC_DRAW)
 
-proc setupArrayLayout*[T](vertex: T, verticesId, indicesId: GpuId) =
+proc setupArrayLayout*[T](vertex: T, verticesId: GpuId, indicesId: Option[GpuId] = none(GpuId), startAttrib: int = 0): int =
   var offset: int = 0
   glBindBuffer(GL_ARRAY_BUFFER, verticesId)
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesId)
+  if indicesId.isSome():
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesId.get())
   for i, fname, field in enumerate(vertex.fieldPairs()):
-    assert field is array, "Implement non-array types for vertex fields. Use 'when field is array:...'."
-    var itemType: GLenum = when field[0].type is float32: cGL_FLOAT else: cGL_UNSIGNED_SHORT #uint16
-    glEnableVertexAttribArray(i.GLuint)
-    glVertexAttribPointer(i.GLuint, field.len().GLint, itemType, GL_FALSE, sizeof(vertex).GLsizei, cast[pointer](offset))
+    # assert field is array, "Implement non-array types for vertex fields. Use 'when field is array:...'."
+    var attribId: GLuint = i.GLuint + startAttrib.GLuint
+    glEnableVertexAttribArray(attribId)
+    when field is array:
+      var itemType: GLenum = when field[0].type is float32: cGL_FLOAT else: cGL_UNSIGNED_SHORT #uint16
+      var numItems: GLint = field.len().GLint
+    else:
+      var itemType: GLenum = when field.type is float32: cGL_FLOAT else: cGL_UNSIGNED_SHORT #uint16
+      var numItems: GLint = 1.GLint
+    glVertexAttribPointer(attribId, numItems, itemType, GL_FALSE, sizeof(vertex).GLsizei, cast[pointer](offset))
     offset += sizeof(field)
+    result = i
 
 proc checkStatus*(objectId: GLuint, objectType: Glenum) {.inline.} =
   var success, logSize: GLint

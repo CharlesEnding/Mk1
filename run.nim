@@ -1,10 +1,10 @@
-import std/[math, options, os, paths, rationals, tables]
+import std/[math, options, os, paths, rationals, tables, times]
 
 import opengl
 import glfw
 
 import controller
-import game/[camera, movement, timing, character]
+import game/[camera, character, movement, particles, timing]
 import physics/collision
 import primitives/[scene, renderable, rendertarget, light, material, mesh, model, shader, texture, animation, particles]
 import utils/[blas, gltf, bogls]
@@ -23,6 +23,7 @@ var
 
 const PROJECTION_MATRIX_UNIFORM = Uniform(name:"projMatrix", kind:ukValues)
 const VIEW_MATRIX_UNIFORM = Uniform(name:"viewMatrix",  kind:ukValues)
+const ALBEDO_UNIFORM = Uniform(name: "albedo",     kind: ukSampler)
 
 proc init(): Window =
   glfw.initialize()
@@ -78,7 +79,7 @@ proc init(): Window =
   rootScene.shaders.add Shader(id: 3.ShaderId, path: "shaders".Path, name: "shadow",     uniforms: @[uSun]).toGpu()
   rootScene.shaders.add Shader(id: 4.ShaderId, path: "shaders".Path, name: "refraction", uniforms: @[uTime, uProjection, uView, uModel, uAlbedo]).toGpu()
   rootScene.shaders.add Shader(id: 5.ShaderId, path: "shaders".Path, name: "anim",       uniforms: @[uProjection, uView, uModel, uSun, uJoints, uAlbedo, uShadowMap]).toGpu()
-  rootScene.shaders.add Shader(id: 6.ShaderId, path: "shaders".Path, name: "particle",   uniforms: @[uProjection, uView]).toGpu()
+  rootScene.shaders.add Shader(id: 6.ShaderId, path: "shaders".Path, name: "particle",   uniforms: @[uProjection, uView, uAlbedo]).toGpu()
 
   # var map: Model[MeshVertex] = gltf.loadObj[MeshVertex]("assets/MacAnu", "MacAnu.glb", MeshVertex())
 
@@ -95,8 +96,9 @@ proc init(): Window =
   #   ParticleVertex(position: [ 0.5f32, 0.0,  0.5]),
   # ]
   # dirtContainer = initParticleContainer(dirtMesh)
-  dirtContainer = initParticleContainer()
-  dirtEmitter = ParticleEmitter(translation: [0.0'f32, 5, 0], life: 10.0'f32, scale: 1.0'f32, isEnabled: true, container: dirtContainer)
+  var dirtAtlas = Texture(name: "dirtAtlas", kind: tkPath, path: "assets/dirt.png".Path)
+  dirtContainer = initParticleContainer(dirtAtlas)
+  dirtEmitter = ParticleEmitter(translation: [0.0'f32, 5, 0], life: 10.0'f32, scale: 0.33'f32, isEnabled: true, container: dirtContainer, initParticle: initDirt, updateParticle: updateDirt, interval: initDuration(seconds=2))
 
   npc1 = createNpc()
   rootScene.renderables.add npc1.renderable.get()
@@ -125,9 +127,7 @@ proc init(): Window =
 
 proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
 
-  dirtEmitter = dirtEmitter.update()
-  dirtContainer.update()
-
+  # Diconnect game logic speed from render speed. Use timing object
   var dir: Vec3 = inputs.pollDirection(playerCamera)
   playerChar.movement = playerChar.movement.get().updateSpeed(dir).some()
   playerChar = playerChar.update()
@@ -135,6 +135,10 @@ proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
 
   npc1 = npc1.update()
   npc1.spatial = npc1.spatial.get().updateHeight(npc1.grounded.get(), BVH).some()
+
+  dirtEmitter = dirtEmitter.updateDirtEmitter(playerChar.spatial.get())
+  dirtEmitter = update(dirtEmitter)
+  dirtContainer.update(dirtEmitter)
 
   if inputs.consumePrintDebug():
     echo playerChar.spatial.get().position
@@ -190,6 +194,7 @@ proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
   var v = playerCamera.viewMatrix()
   glUniformMatrix4fv(shader6.uniforms[PROJECTION_MATRIX_UNIFORM].GLint, 1, true, glePointer(p.addr))
   glUniformMatrix4fv(shader6.uniforms[VIEW_MATRIX_UNIFORM].GLint,       1, true, glePointer(v.addr))
+  dirtContainer.texture.use(shader6.uniforms[ALBEDO_UNIFORM])
   dirtContainer.draw()
 
 

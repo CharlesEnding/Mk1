@@ -74,6 +74,10 @@ Tasks:
    ☐ Depth
    ☐ Reflection
  ☐ Lights and shadows
+   https://forum.openmw.org/viewtopic.php?t=7036&sid=2b4840eda3066d9c00d84730f03e8678&start=10
+   https://glampert.com/2014/03-12/back-from-the-shadows/
+   https://fabiensanglard.net/doom3_documentation/CarmackOnShadowVolumes.txt
+
    ✔ Sun @done (25-02-25 18:20)
    ☐ Individual lights
    ☐ Map shadows
@@ -89,7 +93,6 @@ Tasks:
    ✔ Speed @done (25-03-21 13:19)
    ✔ Orientation @done (25-03-21 13:18)
    ☐ Animation transition
-   ☐ Multidevice inputs
  ✔ Skeletal Animation: @done (25-03-25 20:17)
    ✔ Load from GLTF @done (25-02-25 17:57)
      ✔ Load joints hierarchy @done (25-02-25 17:57)
@@ -129,17 +132,17 @@ Tasks:
    ☐ Make particles renderables
    ☐ Texture
      ☐ Billboarding
-     ☐ Atlas
+     ✔ Atlas @done (25-03-26 17:05)
    ☐ Logic
      ✔ Particle @done (25-03-25 16:23)
      ✔ Emitter @done (25-03-25 16:23)
      ✔ Container @done (25-03-25 16:23)
-     ☐ Movement
+     ✔ Movement @done (25-03-26 17:05)
      ☐ Sorting
-   ☐ Character steps (doesn't appear on first step (delay), no paticle when walking only running, not lit)
-     ☐ Scale * 2 over life
-     ☐ Life: 3 seconds
-     ☐ Texture billboard
+   ✔ Character steps (doesn't appear on first step (delay), no paticle when walking only running, not lit) @done (25-03-26 17:09)
+     ✔ Scale * 2 over life @done (25-03-26 17:09)
+     ✔ Life: 3 seconds @done (25-03-26 17:05)
+     ✔ Texture billboard @done (25-03-26 17:05)
    ☐ Teleportation halo
  ☐ UI
    ☐ Chatter (visible over everything, threshold distance, fade out, remains the same size regardless of distance)
@@ -172,12 +175,19 @@ Tasks:
    ☐ Windows
      ☐ 10 (54%)
      ☐ 11 (44%)
+   ☐ Switch
+     ☐ 1
+     ☐ 2
    ☐ SteamOS
    ☐ Resolutions
      ☐ 1920x1080 (50%)
      ☐ 2560x1440 (30%)
    ☐ Multiscreen
    ☐ Inputs
+     https://www.glfw.org/docs/3.3/input_guide.html
+     https://www.glfw.org/docs/3.3/group__input.html
+     Architecture -> Key enum -> Action enum -> do something, configurable Key->Action store. Hardcoded Action -> Do something functions
+     UI shows list of actions with their keys for remapping.
      ☐ Controllers
      ☐ Keyboard & mouse
  ☐ Localization support

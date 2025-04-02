@@ -14,15 +14,16 @@ type
     position*: Vec3
     texCoord*: Vec2
     color*: Vec3
-    life, scale: float32
+    life*, scale*: float32
+    translation*: Vec3
 
-  Particle = array[VERTICES_PER_PARTICLE, ParticleVertex]
+  Particle* = array[VERTICES_PER_PARTICLE, ParticleVertex]
 
   ParticleBuffers = ptr array[NUM_PARTICLES_PER_EMITTER*VERTICES_PER_PARTICLE*BUFFER_REPLICATION, ParticleVertex]
 
   ParticleContainer* = object
     particleMesh, vertexLayout, bufferStore: GpuId
-    texture: TextureOnGpu
+    texture*: TextureOnGpu
     gpuBuffers: ParticleBuffers
     cpuBuffer:  array[NUM_PARTICLES_PER_EMITTER, Particle]
     currentIndex, bufferInUse: int
@@ -30,32 +31,22 @@ type
 
   ParticleContainerRef* = ref ParticleContainer
 
-  InitParticleVertex   = proc (emitter: ParticleEmitter, index: int): ParticleVertex
-  UpdateParticleVertex = proc (emitter: ParticleEmitter, index: int): ParticleVertex
+  InitParticleVertex   = proc (emitter: ParticleEmitter): Particle
+  UpdateParticleVertex = proc (emitter: ParticleEmitter, vertex: ParticleVertex, index: int): ParticleVertex
 
   ParticleEmitter* = object
     translation*: Vec3
     life*, scale*: float32
-    interval: Duration = initDuration(seconds=10)
+    interval*: Duration = initDuration(seconds=10)
     lastEmission: Time
     isEnabled*: bool
     container*: ParticleContainerRef
-    init: InitParticleVertex
-    update: UpdateParticleVertex
+    initParticle*: InitParticleVertex
+    updateParticle*: UpdateParticleVertex
 
-proc initParticle(): Particle =
-  assert VERTICES_PER_PARTICLE == 6, "Change prototype mesh if changing vertices per particle."
-  [
-    ParticleVertex(position: [-0.5'f32,  0.5, 0], texCoord: [0.0'f32, 0.0], life: 10.0, scale: 1.0),
-    ParticleVertex(position: [ 0.5'f32,  0.5, 0], texCoord: [1.0'f32, 0.0], life: 10.0, scale: 1.0),
-    ParticleVertex(position: [-0.5'f32, -0.5, 0], texCoord: [0.0'f32, 1.0], life: 10.0, scale: 1.0),
-    ParticleVertex(position: [-0.5'f32, -0.5, 0], texCoord: [0.0'f32, 1.0], life: 10.0, scale: 1.0),
-    ParticleVertex(position: [ 0.5'f32,  0.5, 0], texCoord: [1.0'f32, 0.0], life: 10.0, scale: 1.0),
-    ParticleVertex(position: [ 0.5'f32, -0.5, 0], texCoord: [1.0'f32, 1.0], life: 10.0, scale: 1.0)
-  ]
-
-proc initParticleContainer*(): ParticleContainerRef =
+proc initParticleContainer*(texture: Texture): ParticleContainerRef =
   result = new ParticleContainer
+  result.texture = texture.toGpuCached()
 
   # Create layout for shader
   glCreateVertexArrays(1, result.vertexLayout.addr)
@@ -79,15 +70,7 @@ proc add(container: ParticleContainerRef, particle: Particle) =
 proc emit(emitter: ParticleEmitter): ParticleEmitter =
   result = emitter
   result.lastEmission = getTime()
-  var particle = initParticle()
-  var ty = rand(1..3).float32
-  var tz = rand(1..3).float32
-  for i, v in enumerate(particle):
-    var vertex = v
-    vertex.position = vertex.position + [0'f32, ty+3, tz].Vec3 #+ result.translation
-    vertex.life  = result.life
-    vertex.scale = result.scale
-    particle[i] = vertex
+  var particle = emitter.initParticle(emitter)
   result.container.add(particle)
 
 proc update*(emitter: ParticleEmitter): ParticleEmitter =
@@ -96,10 +79,12 @@ proc update*(emitter: ParticleEmitter): ParticleEmitter =
   if result.isEnabled and (now - result.lastEmission) > result.interval:
     result = result.emit()
 
-proc update*(container: ParticleContainerRef) =
+proc update*(container: ParticleContainerRef, emitter: ParticleEmitter) =
   for i in 0..<NUM_PARTICLES_PER_EMITTER:
     for j in 0..<VERTICES_PER_PARTICLE:
-      container.cpuBuffer[i][j].life = max(container.cpuBuffer[i][j].life - 0.01, 0)
+      if container.cpuBuffer[i][j].life > 0:
+        container.cpuBuffer[i][j] = emitter.updateParticle(emitter, container.cpuBuffer[i][j], j)
+      # container.cpuBuffer[i][j].life = max(container.cpuBuffer[i][j].life - 0.01, 0)
 
 proc lock(container: ParticleContainerRef) =
   var maybeFence = container.fence[container.bufferInUse]

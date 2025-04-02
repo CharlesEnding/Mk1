@@ -2,6 +2,7 @@ import std/[options, times]
 
 import ../utils/blas
 import ../physics/collision
+import ../primitives/particles
 
 type
   SpatialBehaviour* = object
@@ -67,3 +68,7 @@ proc move*(spatial: SpatialBehaviour, movement: MovementBehaviour): SpatialBehav
 proc updateHeight*(spatial: SpatialBehaviour, grounded: GroundedBehaviour, bvh: Node): SpatialBehaviour =
   result = spatial
   result.position = bvh.getHeight(result.position) + [0'f32, grounded.heightOffTheFloor, 0].Vec3
+
+proc updateDirtEmitter*(emitter: ParticleEmitter, spatial: SpatialBehaviour): ParticleEmitter =
+  result = emitter
+  result.translation = spatial.position

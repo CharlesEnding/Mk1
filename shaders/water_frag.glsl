@@ -64,11 +64,11 @@ void main()
   vec4 U_FogColor = vec4(0.40, 0.25, 0.10, 1.0);
 
 
-  float U_DepthStart = 1;
-  float U_DepthEnd = 5;
+  float U_DepthStart = 8;
+  float U_DepthEnd = 20;
   float depthAlpha=pow((abs(V_EyeSpacePos.z / V_EyeSpacePos.w)-U_DepthStart)/(U_DepthEnd-U_DepthStart), 1);
    //clamp cross-border processing to obtain the value in the middle of the three parameters
-  depthAlpha=1.0-clamp(depthAlpha,0.0,0.5);
+  depthAlpha=1.0-clamp(depthAlpha,0.0,0.9);
   vec4 deepColor = vec4(0.094, 0.106, 0.055, 0.8);
   float depthColorScale = 1.0 / 2.0;
   vec4 linearColor = mix(deepColor, refrSample, depthAlpha);//clamp(gl_FragCoord.z * depthColorScale, 0.0, 1.0));

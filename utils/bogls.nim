@@ -102,7 +102,7 @@ proc compileShader*(shaderText: string, shaderType: GLenum): GpuId {.inline.} =
   glCompileShader(result)
   checkStatus(result, GL_SHADER)
 
-proc compileShaders*(vertexShaderPath, fragmentShaderPath: Path): GpuId {.inline.} =
+proc compileShaders*(vertexShaderPath, fragmentShaderPath: Path, geometryShaderPath: Option[Path] = none(Path)): GpuId {.inline.} =
   let vertexShaderText   = readFile(vertexShaderPath.string)
   let fragmentShaderText = readFile(fragmentShaderPath.string)
 
@@ -112,6 +112,10 @@ proc compileShaders*(vertexShaderPath, fragmentShaderPath: Path): GpuId {.inline
   result = glCreateProgram()
   glAttachShader(result, vertexShader)
   glAttachShader(result, fragmentShader)
+  if geometryShaderPath.isSome():
+    let geoShaderText = readFile(geometryShaderPath.get().string)
+    let geoShader = compileShader(geoShaderText, GL_GEOMETRY_SHADER)
+    glAttachShader(result, geoShader)
   glLinkProgram(result)
 
 proc loadTexture*(data: seq[byte]; width, height: int): GpuId {.inline.} =

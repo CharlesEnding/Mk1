@@ -79,7 +79,7 @@ proc init(): Window =
   rootScene.shaders.add Shader(id: 3.ShaderId, path: "shaders".Path, name: "shadow",     uniforms: @[uSun]).toGpu()
   rootScene.shaders.add Shader(id: 4.ShaderId, path: "shaders".Path, name: "refraction", uniforms: @[uTime, uProjection, uView, uModel, uAlbedo]).toGpu()
   rootScene.shaders.add Shader(id: 5.ShaderId, path: "shaders".Path, name: "anim",       uniforms: @[uProjection, uView, uModel, uSun, uJoints, uAlbedo, uShadowMap]).toGpu()
-  rootScene.shaders.add Shader(id: 6.ShaderId, path: "shaders".Path, name: "particle",   uniforms: @[uProjection, uView, uAlbedo]).toGpu()
+  rootScene.shaders.add Shader(id: 6.ShaderId, path: "shaders".Path, name: "particle",   uniforms: @[uProjection, uView, uAlbedo], hasGeo: true).toGpu()
 
   # var map: Model[MeshVertex] = gltf.loadObj[MeshVertex]("assets/MacAnu", "MacAnu.glb", MeshVertex())
 

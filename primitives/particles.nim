@@ -6,20 +6,16 @@ import ../utils/[blas, bogls]
 import texture
 
 const NUM_PARTICLES_PER_EMITTER = 200
-const VERTICES_PER_PARTICLE = 6
 const BUFFER_REPLICATION = 3
 
 type
-  ParticleVertex* {.packed.} = object
+  Particle* {.packed.} = object
     position*: Vec3
-    texCoord*: Vec2
+    texCoord*, texSize*: Vec2
     color*: Vec3
     life*, scale*: float32
-    translation*: Vec3
 
-  Particle* = array[VERTICES_PER_PARTICLE, ParticleVertex]
-
-  ParticleBuffers = ptr array[NUM_PARTICLES_PER_EMITTER*VERTICES_PER_PARTICLE*BUFFER_REPLICATION, ParticleVertex]
+  ParticleBuffers = ptr array[NUM_PARTICLES_PER_EMITTER*BUFFER_REPLICATION, Particle]
 
   ParticleContainer* = object
     particleMesh, vertexLayout, bufferStore: GpuId
@@ -31,8 +27,8 @@ type
 
   ParticleContainerRef* = ref ParticleContainer
 
-  InitParticleVertex   = proc (emitter: ParticleEmitter): Particle
-  UpdateParticleVertex = proc (emitter: ParticleEmitter, vertex: ParticleVertex, index: int): ParticleVertex
+  InitParticle   = proc (emitter: ParticleEmitter): Particle
+  UpdateParticle = proc (emitter: ParticleEmitter, vertex: Particle): Particle
 
   ParticleEmitter* = object
     translation*: Vec3
@@ -41,8 +37,8 @@ type
     lastEmission: Time
     isEnabled*: bool
     container*: ParticleContainerRef
-    initParticle*: InitParticleVertex
-    updateParticle*: UpdateParticleVertex
+    initParticle*: InitParticle
+    updateParticle*: UpdateParticle
 
 proc initParticleContainer*(texture: Texture): ParticleContainerRef =
   result = new ParticleContainer
@@ -54,9 +50,9 @@ proc initParticleContainer*(texture: Texture): ParticleContainerRef =
 
   # Create permanent storage for the particle info that changes every frame
   glCreateBuffers(1, result.bufferStore.addr)
-  discard setupArrayLayout(ParticleVertex(), result.bufferStore)
+  discard setupArrayLayout(Particle(), result.bufferStore)
   var flags = GL_MAP_WRITE_BIT or GL_MAP_PERSISTENT_BIT or GL_MAP_COHERENT_BIT;
-  var bufferSize = NUM_PARTICLES_PER_EMITTER * VERTICES_PER_PARTICLE * BUFFER_REPLICATION * sizeof(ParticleVertex)
+  var bufferSize = NUM_PARTICLES_PER_EMITTER * BUFFER_REPLICATION * sizeof(Particle)
   glNamedBufferStorage(result.bufferStore, bufferSize, cast[pointer](0), flags)
   var buffers: pointer = glMapNamedBufferRange(result.bufferStore, 0, bufferSize, flags)
   result.gpuBuffers = cast[ParticleBuffers](buffers)
@@ -81,10 +77,8 @@ proc update*(emitter: ParticleEmitter): ParticleEmitter =
 
 proc update*(container: ParticleContainerRef, emitter: ParticleEmitter) =
   for i in 0..<NUM_PARTICLES_PER_EMITTER:
-    for j in 0..<VERTICES_PER_PARTICLE:
-      if container.cpuBuffer[i][j].life > 0:
-        container.cpuBuffer[i][j] = emitter.updateParticle(emitter, container.cpuBuffer[i][j], j)
-      # container.cpuBuffer[i][j].life = max(container.cpuBuffer[i][j].life - 0.01, 0)
+    if container.cpuBuffer[i].life > 0:
+      container.cpuBuffer[i] = emitter.updateParticle(emitter, container.cpuBuffer[i])
 
 proc lock(container: ParticleContainerRef) =
   var maybeFence = container.fence[container.bufferInUse]
@@ -102,18 +96,17 @@ proc wait(container: ParticleContainerRef) =
 proc draw*(container: ParticleContainerRef) =
   container.wait()
 
-  var bufferStart: int = container.bufferInUse * NUM_PARTICLES_PER_EMITTER * VERTICES_PER_PARTICLE
+  var bufferStart: int = container.bufferInUse * NUM_PARTICLES_PER_EMITTER
   var gpuIndex: int = 0
   for i in 0..<NUM_PARTICLES_PER_EMITTER:
-    if container.cpuBuffer[i][0].life > 0:
-      for j in 0..<VERTICES_PER_PARTICLE:
-        container.gpuBuffers[gpuIndex*VERTICES_PER_PARTICLE + j + bufferStart] = container.cpuBuffer[i][j]
+    if container.cpuBuffer[i].life > 0:
+      container.gpuBuffers[bufferStart + gpuIndex] = container.cpuBuffer[i]
       gpuIndex += 1
 
   glEnableVertexAttribArray(0)
   glBindVertexArray(container.vertexLayout)
   glBindBuffer(GL_ARRAY_BUFFER, container.bufferStore)
-  glDrawArrays(GL_TRIANGLES, bufferStart.GLint, (gpuIndex * VERTICES_PER_PARTICLE).GLsizei)
+  glDrawArrays(GL_POINTS, bufferStart.GLint, gpuIndex.GLsizei)
 
   container.lock()
 

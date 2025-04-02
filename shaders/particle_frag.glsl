@@ -11,5 +11,4 @@ void main()
 {
   vec4 albSample = texture(albedo, UV);
   fragmentColor = vec4(albSample.xyz, albSample.w*life/10.0*2);
-  // vec4(1.0, 0, 0, life / 10.0);
 }

@@ -1,4 +1,4 @@
-import std/[paths, tables]
+import std/[options, paths, tables]
 
 import opengl
 
@@ -17,6 +17,7 @@ type
     path*: Path
     name*: string
     uniforms*: seq[Uniform]
+    hasGeo*: bool = false
 
   ShaderOnGpu* = object
     id*: ShaderId
@@ -28,7 +29,8 @@ type
 proc toGpu*(shader: Shader): ShaderOnGpu =
   result.id  = shader.id
   result.name = shader.name
-  result.programId = compileShaders(shader.path / Path(shader.name & "_vert.glsl"), shader.path / Path(shader.name & "_frag.glsl"))
+  var geoPath: Option[Path] = if shader.hasGeo: some(shader.path / Path(shader.name & "_geo.glsl")) else: none(Path)
+  result.programId = compileShaders(shader.path / Path(shader.name & "_vert.glsl"), shader.path / Path(shader.name & "_frag.glsl"), geoPath)
   for uniform in shader.uniforms:
     result.uniforms[uniform] = gleGetUniformId(result.programId, uniform.name, shader.name)
 

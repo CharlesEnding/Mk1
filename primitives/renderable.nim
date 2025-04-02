@@ -1,4 +1,4 @@
-import std/[paths]
+import std/[options, paths]
 
 import ../utils/[blas, gltf]
 
@@ -28,3 +28,10 @@ proc updateTransform*(renderable: RenderableBehaviourRef, position, orientation,
   result = renderable
   result.model.transform = position.translationMatrix() * orientation.direction2quaternion().rotationMatrix() * scale.scaleMatrix()
   # result.model.transform = position.translationMatrix() * scale.scaleMatrix()
+
+proc updateAnimation*(renderable: RenderableBehaviourRef, newState: int): RenderableBehaviourRef =
+  result = renderable
+  if result.model.animationComponent.isSome():
+    var anim = result.model.animationComponent.get()
+    anim.playingId = newState
+    result.model.animationComponent = some(anim)

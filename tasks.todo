@@ -71,7 +71,7 @@ Tasks:
  ✔ Skybox @done (25-01-17 13:17)
  ☐ Water
    ✔ Refraction @done (25-02-25 18:19)
-   ☐ Depth
+   ✔ Depth @done (25-04-02 18:56)
    ☐ Reflection
  ☐ Lights and shadows
    https://forum.openmw.org/viewtopic.php?t=7036&sid=2b4840eda3066d9c00d84730f03e8678&start=10
@@ -88,11 +88,11 @@ Tasks:
    ✔ Camera @done (25-02-25 18:21)
    ☐ Walls
    ☐ Character to character
- ☐ Controls
+ ✔ Controls @done (25-04-02 19:32)
    ✔ Animated model @done (25-03-21 13:18)
    ✔ Speed @done (25-03-21 13:19)
    ✔ Orientation @done (25-03-21 13:18)
-   ☐ Animation transition
+   ✔ Animation transition @done (25-04-02 19:32)
  ✔ Skeletal Animation: @done (25-03-25 20:17)
    ✔ Load from GLTF @done (25-02-25 17:57)
      ✔ Load joints hierarchy @done (25-02-25 17:57)
@@ -129,9 +129,9 @@ Tasks:
        ✔ Add normal calculation @done (25-03-25 20:17)
  ☐ Particles
    ✔ Shader @done (25-03-25 16:23)
-   ☐ Make particles renderables
-   ☐ Texture
-     ☐ Billboarding
+   ✘ Make particles renderables @cancelled (25-04-02 17:50)
+   ✔ Texture @done (25-04-02 17:49)
+     ✔ Billboarding @done (25-04-02 17:49)
      ✔ Atlas @done (25-03-26 17:05)
    ☐ Logic
      ✔ Particle @done (25-03-25 16:23)
@@ -166,6 +166,7 @@ Tasks:
    ☐ Dialog
  ✔ Fog @done (25-01-25 12:07)
  ☐ Polish
+   ☐ Water depth parameters
    ☐ Fog distance
    ☐ Sun colour
    ☐ Light colours and intensities

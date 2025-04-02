@@ -55,3 +55,8 @@ proc update*(character: Character): Character =
     if result.renderable.isSome():
       let s = result.spatial.get()
       result.renderable = result.renderable.get().updateTransform(s.position, s.orientation, s.size).some()
+
+      if result.movement.get().speed.length < 0.02:
+        result.renderable = result.renderable.get().updateAnimation(newState=0).some()
+      else:
+        result.renderable = result.renderable.get().updateAnimation(newState=2).some()

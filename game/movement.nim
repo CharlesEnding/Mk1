@@ -2,7 +2,7 @@ import std/[options, times]
 
 import ../utils/blas
 import ../physics/collision
-import ../primitives/particles
+import ../primitives/[animation, particles]
 
 type
   SpatialBehaviour* = object
@@ -10,7 +10,7 @@ type
 
   MovementBehaviour* = object
     baseSpeed*: float
-    speed: Vec3 # Speed can be different from orientation (running backwards)
+    speed*: Vec3 # Speed can be different from orientation (running backwards)
 
   RoutePoint* = object
     position*: Vec3
@@ -31,7 +31,7 @@ type
   GroundedBehaviour* = object
     height*, heightOffTheFloor*: float
 
-proc approxEqual(p1, p2: Vec3, epsilon: float = 0.1): bool = length([(p1-p2).x, (p1-p2).z]) < epsilon
+proc approxEqual*(p1, p2: Vec3, epsilon: float = 0.05): bool = length([(p1-p2).x, (p1-p2).z]) < epsilon
 
 proc idlingAtTarget(following: FollowingBehaviour):  bool = following.arrival.isSome()
 proc idledLongEnough(following: FollowingBehaviour, arrival: Time): bool = (getTime() - arrival) >= following.route[following.target].idling

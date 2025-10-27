@@ -73,13 +73,13 @@ proc init(): Window =
   var uModel  = Uniform(name:"modelMatrix", kind: ukValues)
   var uJoints = Uniform(name:"jointTransforms", kind: ukValues)
 
-  rootScene.shaders.add Shader(id: 0.ShaderId, path: "shaders".Path, name: "lit",        uniforms: @[uProjection, uView, uModel, uSun, uAlbedo, uShadowMap]).toGpu()
-  rootScene.shaders.add Shader(id: 1.ShaderId, path: "shaders".Path, name: "water",      uniforms: @[uTime, uProjection, uView, uModel, uAlbedo, uRefraction]).toGpu()
-  rootScene.shaders.add Shader(id: 2.ShaderId, path: "shaders".Path, name: "basic",      uniforms: @[uProjection, uView, uModel, uAlbedo]).toGpu()
-  rootScene.shaders.add Shader(id: 3.ShaderId, path: "shaders".Path, name: "shadow",     uniforms: @[uSun]).toGpu()
-  rootScene.shaders.add Shader(id: 4.ShaderId, path: "shaders".Path, name: "refraction", uniforms: @[uTime, uProjection, uView, uModel, uAlbedo]).toGpu()
-  rootScene.shaders.add Shader(id: 5.ShaderId, path: "shaders".Path, name: "anim",       uniforms: @[uProjection, uView, uModel, uSun, uJoints, uAlbedo, uShadowMap]).toGpu()
-  rootScene.shaders.add Shader(id: 6.ShaderId, path: "shaders".Path, name: "particle",   uniforms: @[uProjection, uView, uAlbedo], hasGeo: true).toGpu()
+  rootScene.addShader Shader(id: 0.ShaderId, path: "shaders".Path, name: "lit",        uniforms: @[uProjection, uView, uModel, uSun, uAlbedo, uShadowMap])
+  rootScene.addShader Shader(id: 1.ShaderId, path: "shaders".Path, name: "water",      uniforms: @[uTime, uProjection, uView, uModel, uAlbedo, uRefraction])
+  rootScene.addShader Shader(id: 2.ShaderId, path: "shaders".Path, name: "basic",      uniforms: @[uProjection, uView, uModel, uAlbedo])
+  rootScene.addShader Shader(id: 3.ShaderId, path: "shaders".Path, name: "shadow",     uniforms: @[uSun])
+  rootScene.addShader Shader(id: 4.ShaderId, path: "shaders".Path, name: "refraction", uniforms: @[uTime, uProjection, uView, uModel, uAlbedo])
+  rootScene.addShader Shader(id: 5.ShaderId, path: "shaders".Path, name: "anim",       uniforms: @[uProjection, uView, uModel, uSun, uJoints, uAlbedo, uShadowMap])
+  rootScene.addShader Shader(id: 6.ShaderId, path: "shaders".Path, name: "particle",   uniforms: @[uProjection, uView, uAlbedo], hasGeo: true)
 
   # var map: Model[MeshVertex] = gltf.loadObj[MeshVertex]("assets/MacAnu", "MacAnu.glb", MeshVertex())
 
@@ -121,7 +121,10 @@ proc init(): Window =
     fulcrum     = fulcrum
   )
 
-  inputs.setup(win)#, collisionSystem)
+  proc reloadShaderCallback() =
+    rootScene.reloadShader("water")
+
+  inputs.setup(win, reloadShaderCallback)#, collisionSystem)
 
   return win
 
@@ -168,7 +171,7 @@ proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
   glClear(GL_DEPTH_BUFFER_BIT)
   glEnable(GL_CULL_FACE)
   glCullFace(GL_FRONT)
-  rootScene.draw(playerCamera.Camera, @[3])
+  rootScene.draw(playerCamera.Camera, @["shadow"])
   glCullFace(GL_BACK)
   glDisable(GL_CULL_FACE)
 
@@ -178,7 +181,7 @@ proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
   target(refractionTarget)
   glClear(GL_DEPTH_BUFFER_BIT)
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-  rootScene.draw(playerCamera.Camera, @[4])
+  rootScene.draw(playerCamera.Camera, @["refraction"])
 
   rootScene.previousPasses.add(depthTarget)
   rootScene.previousPasses.add(refractionTarget)
@@ -186,9 +189,9 @@ proc update(win: Window, depthTarget, refractionTarget: RenderTarget) =
   glViewport(0, 0, GLsizei(1280), GLsizei(800))
   targetDefault()
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
-  rootScene.draw(playerCamera.Camera, @[0, 1, 2, 5]) #, mainLight, depthTarget, refractionTarget)
+  rootScene.draw(playerCamera.Camera, @["lit", "water", "basic", "anim"]) #, mainLight, depthTarget, refractionTarget)
 
-  var shader6 = rootScene.shaders[^1]
+  var shader6 = rootScene.shaders["particle"]
   shader6.use()
   var p = playerCamera.projectionMatrix()
   var v = playerCamera.viewMatrix()

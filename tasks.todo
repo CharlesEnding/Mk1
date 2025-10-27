@@ -77,7 +77,11 @@ Tasks:
    https://forum.openmw.org/viewtopic.php?t=7036&sid=2b4840eda3066d9c00d84730f03e8678&start=10
    https://glampert.com/2014/03-12/back-from-the-shadows/
    https://fabiensanglard.net/doom3_documentation/CarmackOnShadowVolumes.txt
-
+   http://blog.wolfire.com/2009/06/how-to-project-decals/
+   https://samdriver.xyz/article/decal-render-intro
+   https://tuket.github.io/posts/2022-08-05-explosion-decals/
+   https://www.leadwerks.com/community/topic/65377-decals-and-material-painting-examples-from-id-tech-7/
+   https://www.reddit.com/r/Starfield/comments/16cdpn0/geometry_decals_and_id_tech/
    ✔ Sun @done (25-02-25 18:20)
    ☐ Individual lights
    ☐ Map shadows
@@ -139,6 +143,9 @@ Tasks:
      ✔ Container @done (25-03-25 16:23)
      ✔ Movement @done (25-03-26 17:05)
      ☐ Sorting
+     ☐ Character behaviour
+     ☐ Only on movement
+     ☐ Depends on surface
    ✔ Character steps (doesn't appear on first step (delay), no paticle when walking only running, not lit) @done (25-03-26 17:09)
      ✔ Scale * 2 over life @done (25-03-26 17:09)
      ✔ Life: 3 seconds @done (25-03-26 17:05)

@@ -14,9 +14,15 @@ type
   Scene* {.requiresInit.} = ref object
     # models*:  seq[ModelOnGpu]
     renderables*: seq[RenderableBehaviourRef]
-    shaders*: seq[ShaderOnGpu]
+    shaders*: Table[ShaderName, ShaderOnGpu]
     previousPasses*: seq[RenderTarget]
     sun*: Light
+
+proc addShader*(scene: Scene, shader: Shader) =
+  scene.shaders[shader.name] = shader.toGpu()
+
+proc reloadShader*(scene: Scene, name: ShaderName) =
+  scene.shaders[name] = scene.shaders[name].source.toGpu()
 
 const PROJECTION_MATRIX_UNIFORM = Uniform(name:"projMatrix", kind:ukValues)
 const VIEW_MATRIX_UNIFORM = Uniform(name:"viewMatrix",  kind:ukValues)
@@ -35,9 +41,9 @@ proc use*(scene: Scene, playerCamera: Camera, shader: ShaderOnGpu) =
   if shader.uniforms.hasKey(SUN_MATRIX_UNIFORM):        glUniformMatrix4fv(shader.uniforms[SUN_MATRIX_UNIFORM].GLint,        1, true, glePointer(l.addr))
   if shader.uniforms.hasKey(TIME_UNIFORM): glUniform1f(shader.uniforms[TIME_UNIFORM].GLint, time)
 
-proc draw*(scene: Scene, playerCamera: Camera, shadersToDraw: seq[ShaderId] = @[]) =
-  for shader in scene.shaders:
-    if shadersToDraw.len > 0 and shader.id notin shadersToDraw: continue
+proc draw*(scene: Scene, playerCamera: Camera, shadersToDraw: seq[ShaderName] = @[]) =
+  for name, shader in scene.shaders.pairs():
+    if shadersToDraw.len > 0 and name notin shadersToDraw: continue
     shader.use()
     scene.use(playerCamera, shader)
 

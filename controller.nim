@@ -35,12 +35,13 @@ proc consumePrintDebug*(input: InputController): bool =
     return true
   return false
 
-proc setup*(input: InputController, window: Window) =
+proc setup*(input: InputController, window: Window, reloadShaderCb: proc ()) =
 
   proc keyCb(w: Window, key: Key, scanCode: int32, action: KeyAction, mods: set[ModifierKey]) =
     if $action == "down": input.activeKeys.incl(key)
     elif $action == "up": input.activeKeys.excl(key)
     if key == keySpace:   input.printDebug = true
+    if key == keyF5: reloadShaderCb()
 
   proc mouseClickCallback(w: Window, button: MouseButton, pressed: bool, modKeys: set[ModifierKey]) =
     input.movingCamera = pressed

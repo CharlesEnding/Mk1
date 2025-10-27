@@ -44,8 +44,10 @@ void main()
   //fragmentColor = vec4(flow.r, flow.g, 0.0, 1.0);
   //fragmentColor = texSample1;
 
-  vec4 sample1 = 0.125*texture(albedo, vec2(UV.x, UV.y + out_time*0.2) / 1.0);
-  vec4 sample2 = 0.125*texture(albedo, vec2(UV.x - out_time*0.1, UV.y) / 1.0);
+  vec4 sample1 = texture(albedo, vec2(UV.x, UV.y + out_time * 0.22) / 1.0);
+  sample1 = vec4(sample1.rgb * sample1.a, sample1.a);
+  vec4 sample2 = texture(albedo, vec2(UV.x - out_time * 0.2, UV.y) / 1.0);
+  sample2 = vec4(sample2.rgb * sample2.a, sample2.a);
 
   // vec4 refrSample = 0.25*texture(refraction, vec2(gl_FragCoord.x / gl_FragCoord.w, gl_FragCoord.y / gl_FragCoord.w + out_time*0.2));
   // vec2 screenPos = vec2(gl_FragCoord.x / gl_FragCoord.z, gl_FragCoord.y / gl_FragCoord.z);
@@ -53,9 +55,20 @@ void main()
   vec2 resolution = vec2(1280, 800);
   vec2 screenPos = gl_FragCoord.xy / gl_FragCoord.z / resolution;
   // screenPos = vec2(screenPos.x * 1280, screenPos.y * 800);
-  vec4 refrSample = texture(refraction, screenPos);
+  vec4 refrSample = texture(refraction, screenPos);// * 0.7;
 
 
+  // DEPTH
+  float U_DepthStart = 8;
+  float U_DepthEnd = 30;
+  float depthAlpha=pow((abs(V_EyeSpacePos.z / V_EyeSpacePos.w)-U_DepthStart)/(U_DepthEnd-U_DepthStart), 1);
+   //clamp cross-border processing to obtain the value in the middle of the three parameters
+  depthAlpha=1.0-clamp(depthAlpha,0.0,0.9);
+  vec4 deepColor = vec4(0.094, 0.106, 0.055, 0.7);
+  float depthColorScale = 1.0 / 2.0;
+  vec4 linearColor = mix(deepColor, refrSample, depthAlpha);//clamp(gl_FragCoord.z * depthColorScale, 0.0, 1.0));
+
+  // FOG
   float U_FogStart = 25;
   float U_FogEnd = 120;
   float fogAlpha=(abs(V_EyeSpacePos.z / V_EyeSpacePos.w)-U_FogStart)/(U_FogEnd-U_FogStart);
@@ -63,18 +76,13 @@ void main()
   fogAlpha=1.0-clamp(fogAlpha,0.0,0.8);
   vec4 U_FogColor = vec4(0.40, 0.25, 0.10, 1.0);
 
-
-  float U_DepthStart = 8;
-  float U_DepthEnd = 20;
-  float depthAlpha=pow((abs(V_EyeSpacePos.z / V_EyeSpacePos.w)-U_DepthStart)/(U_DepthEnd-U_DepthStart), 1);
-   //clamp cross-border processing to obtain the value in the middle of the three parameters
-  depthAlpha=1.0-clamp(depthAlpha,0.0,0.9);
-  vec4 deepColor = vec4(0.094, 0.106, 0.055, 0.8);
-  float depthColorScale = 1.0 / 2.0;
-  vec4 linearColor = mix(deepColor, refrSample, depthAlpha);//clamp(gl_FragCoord.z * depthColorScale, 0.0, 1.0));
-  linearColor = mix(U_FogColor, (sample1+sample2)+linearColor, fogAlpha);
-
-
+  // MIX
+  vec4 combination = sample1 * 3 * vec4(0.5, 0.85, 0.35, 1.0) + sample2 * 3 * vec4(0.5, 0.85, 0.35, 1.0) + linearColor * 0.5; //vec4((sample1.ggga*4+sample2.ggga*4+linearColor).rgb/2, linearColor.a);
+  linearColor = mix(U_FogColor, combination, fogAlpha);
+  //linearColor = mix(U_FogColor, vec4(linearColor.rgb+sample1.rgb, 0.1+sample1.a*6 + sample2.a*6), fogAlpha);
+  //linearColor = mix(U_FogColor, vec4(linearColor.rgb+sample1.rgb, 0.1+sample1.a*6 + sample2.a*6), fogAlpha);
+  //linearColor = mix(U_FogColor, ((sample1+sample2)+linearColor*1), fogAlpha);
+  //linearColor = mix(U_FogColor, ((sample1+sample2)+linearColor)/3, fogAlpha);
   fragmentColor = linearColor;
   //fragmentColor = vec4(UV.x, UV.y, 0.0, 1.0);
   //fragmentColor = mix(gLowColour, gHighColour, height);

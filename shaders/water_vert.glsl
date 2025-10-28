@@ -17,7 +17,7 @@ out vec4 V_EyeSpacePos;
 void main()
 {
   float speed = 5.0;
-  float displacement = in_Position.y + (sin(in_Position.x*0.4 + time*speed) - sin(in_Position.z*0.4 + time*speed)) * 0.07 - 0.07;
+  float displacement = -1 + (sin(in_Position.x*0.4 + time*speed) - sin(in_Position.z*0.4 + time*speed)) * 0.07 - 0.07;
   gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(in_Position.x, displacement, in_Position.z, 1.0);
   UV = in_Position.xz * 0.2;
   out_time = time;

@@ -24,7 +24,7 @@ type
     children*: seq[Joint]
     transform*: Mat4
 
-  TransformKind* = enum tkTranslation, tkRotation
+  TransformKind* = enum tkTranslation, tkRotation, tkScale
 
   JointTransform* = object
     jointId*: JointId
@@ -32,11 +32,12 @@ type
     case kind*: TransformKind
     of tkTranslation: translation*: Vec3
     of tkRotation:    rotation*:    Vec4
+    of tkScale:       scale*:       Vec3
 
   Animation* = object
     name*: string
     duration*: float
-    translations*, rotations*: Table[JointId, seq[JointTransform]]
+    translations*, rotations*, scales*: Table[JointId, seq[JointTransform]]
 
   AnimationComponent* = object
     skeletonRoot*: Joint # TODO: Use {.requiresInit.} when Nim fixes the seq warnings (issue #21350)
@@ -63,6 +64,7 @@ proc addTransform*(animation: var Animation, transform: JointTransform) =
   case transform.kind:
     of tkTranslation: animation.translations[transform.jointId].add(transform)
     of tkRotation: animation.rotations[transform.jointId].add(transform)
+    of tkScale: animation.scales[transform.jointId].add(transform)
 
 proc indexOfClosestTransform*(animation: Animation, transforms: seq[JointTransform], time: float): int =
   for i in 0..<(transforms.len-1):
@@ -86,7 +88,14 @@ proc interpolate*(animation: Animation, jointId: JointId, jointTransform: Mat4, 
     let progressr: float = progress(rotations[ri].timeStamp, rotations[ri+1].timestamp, time)
     rotation = slerp(rotations[ri].rotation, rotations[ri+1].rotation, progressr)
 
-  return translation.translationMatrix() * rotation.rotationMatrix()
+  var scale: Vec3 = jointTransform.scaleVector() # This isn't documented anywhere in GLTF, I don't know why we have to do this.
+  if animation.scales.hasKey(jointId):
+    let scales: seq[JointTransform] = animation.scales[jointId]
+    let si: int = animation.indexOfClosestTransform(scales, time)
+    let progresss: float = progress(scales[si].timeStamp, scales[si+1].timestamp, time)
+    scale = lerp(scales[si].scale, scales[si+1].scale, progresss)
+
+  return translation.translationMatrix() * rotation.rotationMatrix() * scale.scaleMatrix()
 
 proc jointMatrices*(animation: Animation, time: float, joint: Joint, parentBindTransform, parentAnimTransform: Mat4, matrices: var array[MAX_NUM_JOINTS, Mat4]) =
   var localAnimTransform: Mat4 = animation.interpolate(joint.id, joint.transform, time)

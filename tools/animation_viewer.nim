@@ -1,7 +1,7 @@
 import std/[math, options, paths, rationals, tables, times]
 import opengl, glfw
 import ../controller
-import ../primitives/[scene, renderable, shader, model, animation, mesh, light]
+import ../primitives/[scene, renderable, shader, model, animation, mesh, light, material]
 import ../utils/[blas, bogls, geometry]
 import ../game/camera
 
@@ -11,14 +11,12 @@ var
   mainLight: Light = light.init([60'f32, 80, -80].Vec3, [0.98'f32, 0.77, 0.51].Vec3, 700.0)
   scn: Scene
   kiteModel: RenderableBehaviourRef
+  spurModel: RenderableBehaviourRef
   inputs: InputController = InputController()
   showSpurs = false
   animPaused = false
-  animTime = 0.0
   selectedBone = 0
   selectedAnim = 0
-  spurVao, spurVbo: GLuint
-  spurVertCount = 0
 
 proc initWindow(): Window =
   glfw.initialize()
@@ -46,6 +44,39 @@ proc countAllJoints(joint: Joint): int =
   for child in joint.children:
     result += countAllJoints(child)
 
+proc buildSpurModel(animComp: AnimationComponent, upToId: int): ModelOnGpu =
+  # Build spur geometry from skeleton hierarchy
+  proc collectSpurs(joint: Joint, parent: Mat4, verts: var seq[AnimatedMeshVertex], depth: int = 0) =
+    if joint.id > upToId: return
+    var transform = parent * joint.transform
+    var pos = transform.translationVector()
+    for child in joint.children:
+      if child.id > upToId: continue
+      var childTransform = transform * child.transform
+      var childPos = childTransform.translationVector()
+      var spurVerts = spur(pos, childPos)
+      for v in spurVerts:
+        verts.add AnimatedMeshVertex(
+          position: v.position,
+          normal: v.normal,
+          texCoord: v.texCoord,
+          jointIds: [joint.id.float32, 0, 0, 0].Vec4,
+          weights: [1.0'f32, 0, 0, 0].Vec4
+        )
+      collectSpurs(child, transform, verts, depth + 1)
+  
+  var vertices: seq[AnimatedMeshVertex] = @[]
+  collectSpurs(animComp.skeletonRoot, IDENTMAT4, vertices)
+  
+  var cpuModel: Model[AnimatedMeshVertex]
+  cpuModel.animationComponent = some(animComp)
+  cpuModel.transform = IDENTMAT4
+  
+  var mat = material.Material(id: "spurMaterial", shaderId: 5)
+  cpuModel.addMesh("spurs", vertices, mat)
+  
+  return cpuModel.toGpu()
+
 proc setupScene() =
   scn = new Scene
   scn.sun = mainLight
@@ -71,21 +102,13 @@ proc setupScene() =
     var totalJoints = countAllJoints(kiteModel.model.animationComponent.get().skeletonRoot)
     selectedBone = totalJoints - 1  # Show all bones by default
     echo "Total joints: ", totalJoints
-
-proc getAbsoluteJointTransform(anim: Animation, joint: Joint, parentTransform: Mat4, time: float): Mat4 =
-  var localTransform = anim.interpolate(joint.id, joint.transform, time)
-  return parentTransform * localTransform
-
-proc collectJointPositions(anim: Animation, joint: Joint, parentTransform: Mat4, time: float, upToId: int, positions: var seq[(Vec3, Vec3)]) =
-  var currentTransform = getAbsoluteJointTransform(anim, joint, parentTransform, time)
-  var currentPos = currentTransform.translationVector()
-  if joint.id <= upToId:
-    for child in joint.children:
-      var childTransform = getAbsoluteJointTransform(anim, child, currentTransform, time)
-      var childPos = childTransform.translationVector()
-      positions.add((currentPos, childPos))
-      if child.id <= upToId:
-        collectJointPositions(anim, child, currentTransform, time, upToId, positions)
+    
+    # Create spur model
+    spurModel = RenderableBehaviourRef()
+    spurModel.animated = true
+    spurModel.path = "".Path
+    spurModel.model = buildSpurModel(kiteModel.model.animationComponent.get(), selectedBone)
+    scn.renderables.add spurModel
 
 proc getJointAtIndex(joint: Joint, idx: int, current: var int): Option[Joint] =
   if current == idx: return some(joint)
@@ -95,46 +118,10 @@ proc getJointAtIndex(joint: Joint, idx: int, current: var int): Option[Joint] =
     if res.isSome(): return res
   return none(Joint)
 
-proc updateSpurGeometry() =
+proc rebuildSpurModel() =
   if not kiteModel.model.animationComponent.isSome(): return
   var animComp = kiteModel.model.animationComponent.get()
-  if animComp.animations.len == 0: return
-  var anim = animComp.animations[selectedAnim]
-  var positions: seq[(Vec3, Vec3)] = @[]
-  var totalJoints = countAllJoints(animComp.skeletonRoot)
-  var upToId = min(selectedBone, totalJoints - 1)
-  collectJointPositions(anim, animComp.skeletonRoot, IDENTMAT4, animTime, upToId, positions)
-  var verts: seq[MeshVertex] = @[]
-  for (p0, p1) in positions:
-    var spurVerts = spur(p0, p1)
-    verts.add spurVerts
-  if verts.len == 0: return
-  spurVertCount = verts.len
-  if spurVao == 0:
-    glGenVertexArrays(1, spurVao.addr)
-    glGenBuffers(1, spurVbo.addr)
-  glBindVertexArray(spurVao)
-  glBindBuffer(GL_ARRAY_BUFFER, spurVbo)
-  glBufferData(GL_ARRAY_BUFFER, verts.len * sizeof(MeshVertex), verts[0].addr, GL_DYNAMIC_DRAW)
-  glEnableVertexAttribArray(0)
-  glVertexAttribPointer(0.GLuint, 3.GLint, cGL_FLOAT, false.GLboolean, sizeof(MeshVertex).GLsizei, cast[pointer](0))
-  glEnableVertexAttribArray(1)
-  glVertexAttribPointer(1.GLuint, 3.GLint, cGL_FLOAT, false.GLboolean, sizeof(MeshVertex).GLsizei, cast[pointer](sizeof(Vec3)))
-  glBindVertexArray(0)
-
-proc drawSpurs(cam: Camera) =
-  if spurVertCount == 0 or spurVao == 0: return
-  var shader = scn.shaders["basic"]
-  shader.use()
-  var p = cam.projectionMatrix()
-  var v = cam.viewMatrix()
-  var m = IDENTMAT4
-  glUniformMatrix4fv(shader.uniforms[Uniform(name:"projMatrix", kind:ukValues)].GLint, 1, true, glePointer(p.addr))
-  glUniformMatrix4fv(shader.uniforms[Uniform(name:"viewMatrix", kind:ukValues)].GLint, 1, true, glePointer(v.addr))
-  glUniformMatrix4fv(shader.uniforms[Uniform(name:"modelMatrix", kind:ukValues)].GLint, 1, true, glePointer(m.addr))
-  glBindVertexArray(spurVao)
-  glDrawArrays(GL_TRIANGLES, 0, spurVertCount.GLsizei)
-  glBindVertexArray(0)
+  spurModel.model = buildSpurModel(animComp, selectedBone)
 
 proc printSelectedBonePosition() =
   if not kiteModel.model.animationComponent.isSome(): return
@@ -143,10 +130,9 @@ proc printSelectedBonePosition() =
   var maybeJoint = getJointAtIndex(animComp.skeletonRoot, selectedBone, current)
   if maybeJoint.isNone(): return
   var joint = maybeJoint.get()
-  var anim = animComp.animations[selectedAnim]
   
   proc getAbsPos(j: Joint, parent: Mat4): Vec3 =
-    var transform = getAbsoluteJointTransform(anim, j, parent, animTime)
+    var transform = parent * j.transform
     if j.id == joint.id: return transform.translationVector()
     for child in j.children:
       var res = getAbsPos(child, transform)
@@ -157,25 +143,31 @@ proc printSelectedBonePosition() =
   echo "Bone '", joint.name, "' (", joint.id, ") at: ", pos
 
 proc update(win: Window, dt: float) =
-  if not animPaused and kiteModel.model.animationComponent.isSome():
-    var anim = kiteModel.model.animationComponent.get().animations[selectedAnim]
-    animTime = (animTime + dt) mod anim.duration
-    # Update the playingId in the model's animation component
+  if kiteModel.model.animationComponent.isSome():
     var animComp = kiteModel.model.animationComponent.get()
     animComp.playingId = selectedAnim
     kiteModel.model.animationComponent = some(animComp)
+    if spurModel != nil:
+      spurModel.model.animationComponent = some(animComp)
   
   var orbitDelta = inputs.consumeCameraOrbitDelta()
   cam.orbit(orbitDelta)
   var zoomOffset = inputs.consumeCameraZoomOffset()
   cam.zoom(zoomOffset)
   
-  updateSpurGeometry()
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
   if showSpurs:
-    drawSpurs(cam.Camera)
+    # Only draw spurs, not kite model
+    var shader = scn.shaders["anim"]
+    shader.use()
+    scn.use(cam.Camera, shader)
+    spurModel.model.draw(shader)
   else:
-    scn.draw(cam.Camera, @["anim"])
+    # Draw kite model
+    var shader = scn.shaders["anim"]
+    shader.use()
+    scn.use(cam.Camera, shader)
+    kiteModel.model.draw(shader)
 
 proc setupInput(win: Window) =
   proc noop() = discard
@@ -191,7 +183,6 @@ proc setupInput(win: Window) =
     of keyRight:
       if kiteModel.model.animationComponent.isSome():
         selectedAnim = (selectedAnim + 1) mod kiteModel.model.animationComponent.get().animations.len
-        animTime = 0
         var animComp = kiteModel.model.animationComponent.get()
         animComp.playingId = selectedAnim
         kiteModel.model.animationComponent = some(animComp)
@@ -199,7 +190,6 @@ proc setupInput(win: Window) =
     of keyLeft:
       if kiteModel.model.animationComponent.isSome():
         selectedAnim = (selectedAnim - 1 + kiteModel.model.animationComponent.get().animations.len) mod kiteModel.model.animationComponent.get().animations.len
-        animTime = 0
         var animComp = kiteModel.model.animationComponent.get()
         animComp.playingId = selectedAnim
         kiteModel.model.animationComponent = some(animComp)
@@ -208,11 +198,13 @@ proc setupInput(win: Window) =
       if kiteModel.model.animationComponent.isSome():
         var totalJoints = countAllJoints(kiteModel.model.animationComponent.get().skeletonRoot)
         selectedBone = (selectedBone + 1) mod totalJoints
+        rebuildSpurModel()
         printSelectedBonePosition()
     of keyDown:
       if kiteModel.model.animationComponent.isSome():
         var totalJoints = countAllJoints(kiteModel.model.animationComponent.get().skeletonRoot)
         selectedBone = (selectedBone - 1 + totalJoints) mod totalJoints
+        rebuildSpurModel()
         printSelectedBonePosition()
     of keyP: printSelectedBonePosition()
     else: discard

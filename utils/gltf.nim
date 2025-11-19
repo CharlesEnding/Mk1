@@ -233,16 +233,6 @@ proc readMesh(context: Context, primitive: Primitive, binBuffer: Chunk): LoadedM
   result.texCoords = if "TEXCOORD_0" in attributes: readBuffer[Vec2](context, attributes["TEXCOORD_0"], binBuffer).mapIt([it[0], 1-it[1]].Vec2).some() else: newSeq[Vec2](result.positions.get().len()).some()
   result.joints    = if isAnimated: readBuffer[array[4, uint8]](context, attributes["JOINTS_0" ], binBuffer).mapIt([it[0].uint16 + animOffset, it[1].uint16 + animOffset, it[2].uint16 + animOffset, it[3].uint16 + animOffset]).some() else: none(seq[array[4, uint16]])
   result.weights   = if isAnimated: readBuffer[Vec4](context, attributes["WEIGHTS_0"], binBuffer).some() else: none(seq[Vec4])
-  echo result.positions.get().len(), " vertices read."
-  echo result.normals.get().len(), " normals read."
-  echo result.texCoords.get().len(), " texCoords read."
-  echo if isAnimated: &"{result.joints.get().len()} joint sets read." else: "No joints."
-  echo if isAnimated: &"{result.weights.get().len()} weight sets read." else: "No weights."
-  # for i in 0..<result.joints.get().len():
-  #   echo result.joints.get()[i]
-  #   echo result.weights.get()[i]
-  # for j in result.weights.get():
-  #   echo j
   result.indices   = if primitive.indices.isSome(): readBuffer[uint16](context, primitive.indices.get(), binBuffer).some() else: none(seq[uint16])
 
 proc interlace[T](t: T, mesh: LoadedMesh): VertexBuffer[T] =
@@ -276,13 +266,9 @@ proc readMaterial(context: Context, materialId: ResourceIndex, buffer: Chunk, sh
       var texture = texture.Texture(name: texName, kind: tkBuffer, buffer: textureBuffer)
       var uniform = shader.Uniform(name: "albedo", kind: ukSampler)
       result.textures[uniform] = texture
-      # echo texName
-  # for k, v in result.textures.pairs():
-  #   echo k
 
 proc maybeFindNode(context: Context, name: string): Option[ResourceIndex] =
   for i, node in enumerate(context.nodes):
-    # echo node.name.get("")
     if node.name.isSome() and node.name.get() == name: return some(i)
   none(ResourceIndex)
 
@@ -293,8 +279,6 @@ proc readSkin(context: Context, skin: Skin, buffer: Chunk): Table[ResourceIndex,
   var accessor: AccessorIndex = skin.inverseBindMatrices.get()
   var matrices: seq[Mat4] = readBuffer[Mat4](context, accessor, buffer)
   assert matrices.len == skin.joints.len, "Skin should have as many joints as it as inverse bind matrices."
-  echo skin.joints.len, " joints in skin."
-  echo skin.joints
   for i, (joint_nodeid, matrix) in zip(skin.joints, matrices):
     result[joint_nodeid] = (i.JointIndex, matrix)
 
@@ -410,7 +394,6 @@ proc loadObj*[T](path: string, t: T): Model[T] =
   let jsonObj = jsonChunk.data.parseJson()
   var context = jsonObj.to(Context)
 
-  # var rootNodeId: Option[ResourceIndex] = context.maybeFindNode("root") # RESOLVE: FOR FOX
   var rootNodeId: Option[ResourceIndex] = context.maybeFindNode("OBJ_trall") # TODO: Move to parameter
   # if rootNodeId.isNone():
   #   raise newException(ValueError, "No root node found with this name.")
@@ -424,9 +407,6 @@ proc loadObj*[T](path: string, t: T): Model[T] =
       raise newException(ValueError, "Multiple skins not supported.")
 
     var skinnings: Table[ResourceIndex, Skinning] = context.readSkin(context.skins.get()[0], binChunk)
-    # for i in skinnings.keys():
-    #   echo &"Joint Node ID: {i}, Joint Index: {skinnings[i].jointIndex.int}"
-    #   echo skinnings[i].inverseBindMatrix
     var root: Joint = context.readJointHierarchy(context.nodes[rootNodeId.get()], rootNodeId.get(), skinnings)
     model.animationComponent = some(AnimationComponent(skeletonRoot: root))
     for i, gltfAnim in enumerate(context.animations.get()):

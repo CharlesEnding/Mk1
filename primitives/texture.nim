@@ -37,6 +37,8 @@ proc clearCache*() = discard # Destroy all textures in cache then overwrite tabl
 
 proc use*(texture: TextureOnGpu, samplerId: GpuId) =
   let i: GLint = gleNextActiveTexture()
+  if i >= 192:
+    raise newException(ValueError, "Exceeded maximum number of active textures (192). You've likely failed to reset the active texture count between draws.")
   glActiveTexture((GL_TEXTURE0.GLint + i).GLenum)
   glBindTexture(GL_TEXTURE_2D, texture.id)
   glUniform1i(samplerId.GLint, i)

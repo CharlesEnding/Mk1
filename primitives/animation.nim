@@ -23,6 +23,7 @@ type
     name*: string
     children*: seq[Joint]
     transform*: Mat4
+    inverseBindMatrix*: Option[Mat4]
 
   TransformKind* = enum tkTranslation, tkRotation, tkScale
 
@@ -74,13 +75,16 @@ proc indexOfClosestTransform*(animation: Animation, transforms: seq[JointTransfo
 proc progress*(previousFrame, nextFrame, currentTime: float): float = (currentTime - previousFrame) / (nextFrame - previousFrame)
 
 proc interpolate*(animation: Animation, jointId: JointId, jointTransform: Mat4, time: float): Mat4 =
+
+  # var translation: Vec3 = IDENTMAT4.translationVector() # This isn't documented anywhere in GLTF, I don't know why we have to do this.
   var translation: Vec3 = jointTransform.translationVector() # This isn't documented anywhere in GLTF, I don't know why we have to do this.
   if animation.translations.hasKey(jointId):
     let translations: seq[JointTransform] = animation.translations[jointId]
     let ti: int = animation.indexOfClosestTransform(translations, time)
     let progressp: float = progress(translations[ti].timeStamp, translations[ti+1].timestamp, time)
-    translation = lerp(translations[ti].translation, translations[ti+1].translation, progressp).norm()
+    translation = lerp(translations[ti].translation, translations[ti+1].translation, progressp)
 
+  # var rotation: Vec4 = IDENTMAT4.rotationVector()
   var rotation: Vec4 = jointTransform.rotationVector() # This isn't documented anywhere in GLTF, I don't know why we have to do this.
   if animation.rotations.hasKey(jointId):
     let rotations: seq[JointTransform] = animation.rotations[jointId]
@@ -88,6 +92,8 @@ proc interpolate*(animation: Animation, jointId: JointId, jointTransform: Mat4, 
     let progressr: float = progress(rotations[ri].timeStamp, rotations[ri+1].timestamp, time)
     rotation = slerp(rotations[ri].rotation, rotations[ri+1].rotation, progressr)
 
+  
+  # var scale: Vec3 = IDENTMAT4.scaleVector()
   var scale: Vec3 = jointTransform.scaleVector() # This isn't documented anywhere in GLTF, I don't know why we have to do this.
   if animation.scales.hasKey(jointId):
     let scales: seq[JointTransform] = animation.scales[jointId]
@@ -97,19 +103,26 @@ proc interpolate*(animation: Animation, jointId: JointId, jointTransform: Mat4, 
 
   return translation.translationMatrix() * rotation.rotationMatrix() * scale.scaleMatrix()
 
-proc jointMatrices*(animation: Animation, time: float, joint: Joint, parentBindTransform, parentAnimTransform: Mat4, matrices: var array[MAX_NUM_JOINTS, Mat4]) =
+proc jointMatrices*(animation: Animation, time: float, joint: Joint, parentBindTransform, parentAnimTransform, rootBindTransform: Mat4, matrices: var array[MAX_NUM_JOINTS, Mat4]) =
   var localAnimTransform: Mat4 = animation.interpolate(joint.id, joint.transform, time)
 
-  var bindTransform: Mat4 = parentBindTransform * joint.transform
+  var bindTransform: Mat4 = parentBindTransform * get(joint.inverseBindMatrix)# joint.transform #get(joint.inverseBindMatrix, IDENTMAT4)# joint.transform
   var animTransform: Mat4 = parentAnimTransform * localAnimTransform
-  matrices[joint.id] = animTransform * bindTransform.inverse
+  matrices[joint.id] =   animTransform * rootBindTransform.inverse()# bindTransform# localAnimTransform * parentAnimTransform# animTransform * bindTransform.inverse #get(joint.inverseBindMatrix, IDENTMAT4) # * bindTransform#get(joint.inverseBindMatrix, bindTransform.inverse)
+  
+  # matrices[joint.id] =  animTransform * bindTransform.inverse #get(joint.inverseBindMatrix, IDENTMAT4) # * bindTransform#get(joint.inverseBindMatrix, bindTransform.inverse)
 
   for child in joint.children:
-    animation.jointMatrices(time, child, bindTransform, animTransform, matrices)
+    animation.jointMatrices(time, child, bindTransform, animTransform, rootBindTransform, matrices)
 
 proc use*(animationComponent: AnimationComponent, shader: ShaderOnGpu) =
   if shader.uniforms.hasKey(JOINT_MATRIX_UNIFORM):
     var jointMatrices: array[MAX_NUM_JOINTS, Mat4]
+    for i in 0..<100:
+      jointMatrices[i] = IDENTMAT4
     var playingAnim: Animation = animationComponent.animations[animationComponent.playingId]
-    playingAnim.jointMatrices(epochTime() mod playingAnim.duration, animationComponent.skeletonRoot, IDENTMAT4, IDENTMAT4, jointMatrices)
+    var rootBindTransform: Mat4 = IDENTMAT4
+    if animationComponent.skeletonRoot.inverseBindMatrix.isSome():
+      rootBindTransform = animationComponent.skeletonRoot.inverseBindMatrix.get()
+    playingAnim.jointMatrices(epochTime() mod playingAnim.duration, animationComponent.skeletonRoot, IDENTMAT4, IDENTMAT4, rootBindTransform, jointMatrices)
     glUniformMatrix4fv(shader.uniforms[JOINT_MATRIX_UNIFORM].GLint, 100, true, glePointer(jointMatrices.addr))

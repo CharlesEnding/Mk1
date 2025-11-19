@@ -31,18 +31,19 @@ proc createNpc*(): Character =
     RoutePoint(position: [ -1.7'f32, 0.0,  40.9], idling: initDuration(seconds=0))
   ]
   result.name = "NPC"
-  result.spatial = SpatialBehaviour(size: [0.01'f32, 0.01, 0.01].Vec3).some()
+  result.spatial = SpatialBehaviour(size: [1'f32, 1, 1].Vec3).some()
   result.movement = MovementBehaviour(baseSpeed: 0.05).some()
   result.grounded = GroundedBehaviour(height: 1.6).some()
   result.following = FollowingBehaviour(route: route1).some()
-  result.renderable = load("assets/Fox.glb".Path, animated=true).some()
+  result.renderable = load("assets/kite.glb".Path, animated=true).some()
+  # result.renderable = load("assets/Fox.glb".Path, animated=true).some()
 
 proc createPlayer*(): Character =
   result.name = "Player"
-  result.spatial = SpatialBehaviour(size: [0.01'f32, 0.01, 0.01].Vec3).some()
+  result.spatial = SpatialBehaviour(size: [1'f32, 1, 1].Vec3).some()
   result.movement = MovementBehaviour(baseSpeed: 0.5).some()
   result.grounded = GroundedBehaviour(height: 1.6).some()
-  result.renderable = load("assets/Fox.glb".Path, animated=true).some()
+  result.renderable = load("assets/kite.glb".Path, animated=true).some()
 
 proc update*(character: Character): Character =
   result = character
@@ -57,6 +58,6 @@ proc update*(character: Character): Character =
       result.renderable = result.renderable.get().updateTransform(s.position, s.orientation, s.size).some()
 
       if result.movement.get().speed.length < 0.02:
-        result.renderable = result.renderable.get().updateAnimation(newState=0).some()
+        result.renderable = result.renderable.get().updateAnimation(newState=21).some()
       else:
-        result.renderable = result.renderable.get().updateAnimation(newState=2).some()
+        result.renderable = result.renderable.get().updateAnimation(newState=21).some()

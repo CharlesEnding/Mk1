@@ -2,7 +2,7 @@ import std/[math, options, paths, rationals, tables, times]
 import opengl, glfw
 import ../controller
 import ../primitives/[scene, renderable, shader, model, animation, mesh, light, material]
-import ../utils/[blas, bogls, geometry]
+import ../utils/[blas, bogls, geometry, gltf]
 import ../game/camera
 
 var
@@ -17,6 +17,8 @@ var
   animPaused = false
   selectedBone = 0
   selectedAnim = 0
+  highlightJointId = 0
+  maxJointCount = 100
 
 proc initWindow(): Window =
   glfw.initialize()
@@ -44,8 +46,16 @@ proc countAllJoints(joint: Joint): int =
   for child in joint.children:
     result += countAllJoints(child)
 
+proc printJointHierarchy(joint: Joint, depth: int = 0) =
+  var indent = ""
+  for i in 0..<depth:
+    indent &= "  "
+  echo indent, joint.name, " (id: ", joint.id, ")"
+  for child in joint.children:
+    printJointHierarchy(child, depth + 1)
+
 proc buildSpurModel(animComp: AnimationComponent, upToId: int): ModelOnGpu =
-  # Build spur geometry from skeleton hierarchy
+  # Build spur geometry from skeleton hierarchy - vertices are already in world space from joint transforms
   proc collectSpurs(joint: Joint, parent: Mat4, verts: var seq[AnimatedMeshVertex], depth: int = 0) =
     if joint.id > upToId: return
     var transform = parent * joint.transform
@@ -87,12 +97,56 @@ proc setupScene() =
   var uSun = Uniform(name:"lightMatrix", kind:ukValues)
   var uModel = Uniform(name:"modelMatrix", kind:ukValues)
   var uJoints = Uniform(name:"jointTransforms", kind:ukValues)
+  var uHighlightJoint = Uniform(name:"highlightJointId", kind:ukValues)
+  var uMaxJointCount = Uniform(name:"maxJointCount", kind:ukValues)
   
   scn.addShader Shader(id: 2.ShaderId, path: "shaders".Path, name: "basic", uniforms: @[uProjection, uView, uModel, uAlbedo])
-  scn.addShader Shader(id: 5.ShaderId, path: "shaders".Path, name: "anim", uniforms: @[uProjection, uView, uModel, uSun, uJoints, uAlbedo])
+  scn.addShader Shader(id: 5.ShaderId, path: "shaders".Path, name: "debug_anim", uniforms: @[uProjection, uView, uModel, uSun, uJoints, uAlbedo, uHighlightJoint, uMaxJointCount])
   
-  kiteModel = load("assets/kite.glb".Path, animated=true)
+  # Load kite model as CPU model first
+  var cpuKiteModel = gltf.loadObj[AnimatedMeshVertex]("assets/kite.glb", AnimatedMeshVertex())
+  
+  # Filter vertices to keep only those influenced by joint 12
+  var totalOriginal = 0
+  var totalFiltered = 0
+  for meshName, mesh in cpuKiteModel.meshes.mpairs:
+    var indexedBuffer = IndexedBuffer[AnimatedMeshVertex](mesh)
+    var filteredVertices: seq[AnimatedMeshVertex] = @[]
+    var filteredIndices: seq[uint32] = @[]
+    var vertexMap: Table[int, uint32] = initTable[int, uint32]()
+    
+    totalOriginal += indexedBuffer.vertices.len
+    
+    # First pass: collect vertices influenced by joint 12
+    for i, vertex in indexedBuffer.vertices:
+      # if vertex.jointIds[0].int == 17:
+      vertexMap[i] = filteredVertices.len.uint32
+      filteredVertices.add(vertex)
+    
+    # Second pass: remap indices
+    for idx in indexedBuffer.indices:
+      if vertexMap.hasKey(idx.int):
+        filteredIndices.add(vertexMap[idx.int])
+    
+    indexedBuffer.vertices = filteredVertices
+    indexedBuffer.indices = filteredIndices
+    mesh = IndexedMesh[AnimatedMeshVertex](indexedBuffer)
+    totalFiltered += filteredVertices.len
+  
+  echo "Total: ", totalOriginal, " -> ", totalFiltered, " vertices"
+  
+  # Convert to GPU and create renderable
+  kiteModel = RenderableBehaviourRef()
+  kiteModel.animated = true
+  kiteModel.path = "assets/kite.glb".Path
+  kiteModel.model = cpuKiteModel.toGpu()
+  
   scn.renderables.add kiteModel
+  
+  # Debug: Check if kite model has animation component
+  echo "Kite model has animation component: ", kiteModel.model.animationComponent.isSome()
+  if kiteModel.model.animationComponent.isSome():
+    echo "Kite animation component joint count: ", countAllJoints(kiteModel.model.animationComponent.get().skeletonRoot)
   
   cam = newThirdPersonCamera(target=[0'f32, 2, 0].Vec3, position=[0'f32, 2, 5].Vec3, minDistance=3.0, maxDistance=20.0, fulcrum=fulcrum)
   if kiteModel.model.animationComponent.isSome():
@@ -100,8 +154,11 @@ proc setupScene() =
     for i, anim in kiteModel.model.animationComponent.get().animations:
       echo i, ": ", anim.name
     var totalJoints = countAllJoints(kiteModel.model.animationComponent.get().skeletonRoot)
+    maxJointCount = totalJoints
     selectedBone = totalJoints - 1  # Show all bones by default
     echo "Total joints: ", totalJoints
+    echo "\nJoint hierarchy:"
+    printJointHierarchy(kiteModel.model.animationComponent.get().skeletonRoot)
     
     # Create spur model
     spurModel = RenderableBehaviourRef()
@@ -143,6 +200,7 @@ proc printSelectedBonePosition() =
   echo "Bone '", joint.name, "' (", joint.id, ") at: ", pos
 
 proc update(win: Window, dt: float) =
+  # Update animation state for both models
   if kiteModel.model.animationComponent.isSome():
     var animComp = kiteModel.model.animationComponent.get()
     animComp.playingId = selectedAnim
@@ -156,18 +214,24 @@ proc update(win: Window, dt: float) =
   cam.zoom(zoomOffset)
   
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
+  var shader = scn.shaders["debug_anim"]
+  shader.use()
+  scn.use(cam.Camera, shader)
+  
+  # Set debug uniforms
+  var uHighlightJoint = Uniform(name:"highlightJointId", kind:ukValues)
+  var uMaxJointCount = Uniform(name:"maxJointCount", kind:ukValues)
+  if shader.uniforms.hasKey(uHighlightJoint):
+    glUniform1i(shader.uniforms[uHighlightJoint].GLint, highlightJointId.GLint)
+  if shader.uniforms.hasKey(uMaxJointCount):
+    glUniform1i(shader.uniforms[uMaxJointCount].GLint, maxJointCount.GLint)
+  
   if showSpurs:
-    # Only draw spurs, not kite model
-    var shader = scn.shaders["anim"]
-    shader.use()
-    scn.use(cam.Camera, shader)
     spurModel.model.draw(shader)
   else:
-    # Draw kite model
-    var shader = scn.shaders["anim"]
-    shader.use()
-    scn.use(cam.Camera, shader)
     kiteModel.model.draw(shader)
+  
+  gleResetActiveTextureCount()
 
 proc setupInput(win: Window) =
   proc noop() = discard
@@ -206,6 +270,14 @@ proc setupInput(win: Window) =
         selectedBone = (selectedBone - 1 + totalJoints) mod totalJoints
         rebuildSpurModel()
         printSelectedBonePosition()
+    of keyH:
+      # Cycle highlight joint forward
+      highlightJointId = (highlightJointId + 1) mod maxJointCount
+      echo "Highlighting joint ID: ", highlightJointId
+    of keyG:
+      # Cycle highlight joint backward
+      highlightJointId = (highlightJointId - 1 + maxJointCount) mod maxJointCount
+      echo "Highlighting joint ID: ", highlightJointId
     of keyP: printSelectedBonePosition()
     else: discard
 

@@ -11,6 +11,66 @@ proc writeJointHierarchy(sheet: XlSheet, joint: Joint, row: var int, depth: int 
   sheet[row, 0].value = joint.id
   sheet[row, 1].value = joint.name
   sheet[row, 2].value = depth
+  
+  # Joint Transform - Translation
+  var jtTrans = joint.transform.translationVector()
+  sheet[row, 3].value = jtTrans[0]
+  sheet[row, 3].numFmt = XlNumFmt(code: "0.000")
+  sheet[row, 3].fill = XlFill(patternFill: solidPattern("D9EAD3"))
+  sheet[row, 4].value = jtTrans[1]
+  sheet[row, 4].numFmt = XlNumFmt(code: "0.000")
+  sheet[row, 4].fill = XlFill(patternFill: solidPattern("D9EAD3"))
+  sheet[row, 5].value = jtTrans[2]
+  sheet[row, 5].numFmt = XlNumFmt(code: "0.000")
+  sheet[row, 5].fill = XlFill(patternFill: solidPattern("D9EAD3"))
+  
+  # Joint Transform - Rotation (Quaternion)
+  var jtRot = joint.transform.rotationVector()
+  sheet[row, 6].value = jtRot[0]
+  sheet[row, 6].numFmt = XlNumFmt(code: "0.000")
+  sheet[row, 6].fill = XlFill(patternFill: solidPattern("FFF2CC"))
+  sheet[row, 7].value = jtRot[1]
+  sheet[row, 7].numFmt = XlNumFmt(code: "0.000")
+  sheet[row, 7].fill = XlFill(patternFill: solidPattern("FFF2CC"))
+  sheet[row, 8].value = jtRot[2]
+  sheet[row, 8].numFmt = XlNumFmt(code: "0.000")
+  sheet[row, 8].fill = XlFill(patternFill: solidPattern("FFF2CC"))
+  sheet[row, 9].value = jtRot[3]
+  sheet[row, 9].numFmt = XlNumFmt(code: "0.000")
+  sheet[row, 9].fill = XlFill(patternFill: solidPattern("FFF2CC"))
+  
+  # Inverse Bind Matrix - Translation
+  if joint.inverseBindMatrix.isSome():
+    var ibmTrans = joint.inverseBindMatrix.get().translationVector()
+    sheet[row, 10].value = ibmTrans[0]
+    sheet[row, 10].numFmt = XlNumFmt(code: "0.000")
+    sheet[row, 10].fill = XlFill(patternFill: solidPattern("C9DAF8"))
+    sheet[row, 11].value = ibmTrans[1]
+    sheet[row, 11].numFmt = XlNumFmt(code: "0.000")
+    sheet[row, 11].fill = XlFill(patternFill: solidPattern("C9DAF8"))
+    sheet[row, 12].value = ibmTrans[2]
+    sheet[row, 12].numFmt = XlNumFmt(code: "0.000")
+    sheet[row, 12].fill = XlFill(patternFill: solidPattern("C9DAF8"))
+    
+    # Inverse Bind Matrix - Rotation (Quaternion)
+    var ibmRot = joint.inverseBindMatrix.get().rotationVector()
+    sheet[row, 13].value = ibmRot[0]
+    sheet[row, 13].numFmt = XlNumFmt(code: "0.000")
+    sheet[row, 13].fill = XlFill(patternFill: solidPattern("E4DFEC"))
+    sheet[row, 14].value = ibmRot[1]
+    sheet[row, 14].numFmt = XlNumFmt(code: "0.000")
+    sheet[row, 14].fill = XlFill(patternFill: solidPattern("E4DFEC"))
+    sheet[row, 15].value = ibmRot[2]
+    sheet[row, 15].numFmt = XlNumFmt(code: "0.000")
+    sheet[row, 15].fill = XlFill(patternFill: solidPattern("E4DFEC"))
+    sheet[row, 16].value = ibmRot[3]
+    sheet[row, 16].numFmt = XlNumFmt(code: "0.000")
+    sheet[row, 16].fill = XlFill(patternFill: solidPattern("E4DFEC"))
+  else:
+    for col in 10..16:
+      sheet[row, col].value = "N/A"
+      sheet[row, col].fill = XlFill(patternFill: solidPattern("F4CCCC"))
+  
   row.inc
   for child in joint.children:
     writeJointHierarchy(sheet, child, row, depth + 1)
@@ -22,6 +82,29 @@ proc writeMatrix(sheet: XlSheet, row, startCol: int, m: Mat4) =
       sheet[row, col].value = m[i][j]
       sheet[row, col].numFmt = XlNumFmt(code: "0.000")
       col.inc
+
+proc writeInverseBindMatrices(sheet: XlSheet, row: var int, j: Joint, depth: int = 0) =
+  # JointID - light blue
+  sheet[row, 0].value = j.id
+  sheet[row, 0].fill = XlFill(patternFill: solidPattern("DDEBF7"))
+  
+  # JointName - light gray for metadata
+  sheet[row, 1].value = j.name
+  sheet[row, 1].fill = XlFill(patternFill: solidPattern("F2F2F2"))
+  
+  # Matrix elements - light green if present, light red if absent
+  if j.inverseBindMatrix.isSome():
+    writeMatrix(sheet, row, 2, j.inverseBindMatrix.get())
+    for col in 2..17:
+      sheet[row, col].fill = XlFill(patternFill: solidPattern("D9EAD3"))
+  else:
+    for col in 2..17:
+      sheet[row, col].value = "N/A"
+      sheet[row, col].fill = XlFill(patternFill: solidPattern("F4CCCC"))
+  
+  row.inc
+  for c in j.children:
+    writeInverseBindMatrices(sheet, row, c, depth + 1)
 
 proc writeAnimTransforms(sheet: XlSheet, anim: Animation) =
   var row = 0
@@ -91,9 +174,9 @@ proc writeJointMatrices(sheet: XlSheet, row: var int, j: Joint, matrices: array[
 
 proc writeIntermediateMatrices(sheet: XlSheet, row: var int, anim: Animation, j: Joint, time: float, parentBind, parentAnim: Mat4, depth: int = 0) =
   var localAnim = anim.interpolate(j.id, j.transform, time)
-  var bindTrans = parentBind * j.transform
+  var bindTrans = parentBind * get(j.inverseBindMatrix, j.transform)
   var animTrans = parentAnim * localAnim
-  var final = animTrans * bindTrans.inverse
+  var final = animTrans * get(j.inverseBindMatrix, bindTrans.inverse)
   
   # JointID - light blue
   sheet[row, 0].value = j.id
@@ -138,9 +221,9 @@ proc writeIntermediateMatrices(sheet: XlSheet, row: var int, anim: Animation, j:
 proc writeBoneCentricData(sheet: XlSheet, row: var int, anim: Animation, j: Joint, parentBind, parentAnim: Mat4, depth: int = 0) =
   # Calculate matrices
   var localAnim = anim.interpolate(j.id, j.transform, time=0.0)
-  var bindTrans = parentBind * j.transform
+  var bindTrans = parentBind * get(j.inverseBindMatrix, j.transform)
   var animTrans = parentAnim * localAnim
-  var final = animTrans * bindTrans.inverse
+  var final = animTrans * get(j.inverseBindMatrix, bindTrans.inverse)
   
   # Header: Joint ID and Name
   sheet[row, 0].value = &"JOINT {j.id}: {j.name}"
@@ -261,6 +344,20 @@ proc writeBoneCentricData(sheet: XlSheet, row: var int, anim: Animation, j: Join
   row += 4
   row.inc
   
+  # Inverse Bind Matrix (if present)
+  if j.inverseBindMatrix.isSome():
+    sheet[row, 0].value = "Inverse Bind Matrix (4x4)"
+    sheet.row(row).fill = XlFill(patternFill: solidPattern("C9DAF8"))
+    sheet.row(row).font = XlFont(bold: true)
+    row.inc
+    for i in 0..3:
+      for k in 0..3:
+        sheet[row + i, k].value = j.inverseBindMatrix.get()[i][k]
+        sheet[row + i, k].numFmt = XlNumFmt(code: "0.000")
+        sheet[row + i, k].fill = XlFill(patternFill: solidPattern("C9DAF8"))
+    row += 4
+    row.inc
+  
   sheet[row, 0].value = "Local Anim Transform (4x4)"
   sheet.row(row).fill = XlFill(patternFill: solidPattern("FFF2CC"))
   sheet.row(row).font = XlFont(bold: true)
@@ -329,180 +426,234 @@ when isMainModule:
   hierSheet[0, 0].value = "JointID"
   hierSheet[0, 1].value = "JointName"
   hierSheet[0, 2].value = "Depth"
+  hierSheet[0, 3].value = "JT_Trans_X"
+  hierSheet[0, 4].value = "JT_Trans_Y"
+  hierSheet[0, 5].value = "JT_Trans_Z"
+  hierSheet[0, 6].value = "JT_Rot_X"
+  hierSheet[0, 7].value = "JT_Rot_Y"
+  hierSheet[0, 8].value = "JT_Rot_Z"
+  hierSheet[0, 9].value = "JT_Rot_W"
+  hierSheet[0, 10].value = "IBM_Trans_X"
+  hierSheet[0, 11].value = "IBM_Trans_Y"
+  hierSheet[0, 12].value = "IBM_Trans_Z"
+  hierSheet[0, 13].value = "IBM_Rot_X"
+  hierSheet[0, 14].value = "IBM_Rot_Y"
+  hierSheet[0, 15].value = "IBM_Rot_Z"
+  hierSheet[0, 16].value = "IBM_Rot_W"
   hierSheet.row(0).fill = XlFill(patternFill: solidPattern("B4C7E7"))
   hierSheet.row(0).font = XlFont(bold: true)
+  
+  # Color coding for different column groups
+  for col in 3..5:
+    hierSheet[0, col].fill = XlFill(patternFill: solidPattern("D9EAD3"))  # Joint Transform Translation - light green
+  for col in 6..9:
+    hierSheet[0, col].fill = XlFill(patternFill: solidPattern("FFF2CC"))  # Joint Transform Rotation - light yellow
+  for col in 10..12:
+    hierSheet[0, col].fill = XlFill(patternFill: solidPattern("C9DAF8"))  # IBM Translation - light blue
+  for col in 13..16:
+    hierSheet[0, col].fill = XlFill(patternFill: solidPattern("E4DFEC"))  # IBM Rotation - light purple
+  
   var row = 1
   writeJointHierarchy(hierSheet, animComp.skeletonRoot, row)
   
-  # Process first 3 animations only
-  for i in 0..<min(30, animComp.animations.len):
-    var anim = animComp.animations[i]
-    var animName = anim.name
-    if animName.len > 31: animName = animName[0..30]
-    
-    var sheet = workbook.add(animName)
-    row = 0
-    
-    # Section 1: Translations
-    sheet[row, 0].value = "TRANSLATIONS"
-    var rng = sheet.range((row, 0), (row, 4))
-    rng.merge()
-    rng.fill = XlFill(patternFill: solidPattern("C6EFCE"))
-    rng.font = XlFont(bold: true, size: 12.0)
-    rng.alignment = XlAlignment(horizontal: "center")
-    row.inc
-    
-    sheet[row, 0].value = "JointID"
-    sheet[row, 1].value = "Timestamp"
-    sheet[row, 2].value = "X"
-    sheet[row, 3].value = "Y"
-    sheet[row, 4].value = "Z"
-    sheet.row(row).fill = XlFill(patternFill: solidPattern("E2EFDA"))
-    sheet.row(row).font = XlFont(bold: true)
-    row.inc
-    
-    var lastJointId = -1
-    var jointColor = false
-    for jointId, transforms in anim.translations.pairs():
-      if jointId != lastJointId:
-        jointColor = not jointColor
-        lastJointId = jointId
-      for t in transforms:
-        # JointID column - light blue to distinguish metadata
-        sheet[row, 0].value = jointId
-        sheet[row, 0].fill = XlFill(patternFill: solidPattern("DDEBF7"))
-        
-        # Timestamp column - light purple for time data
-        sheet[row, 1].value = t.timestamp
-        sheet[row, 1].numFmt = XlNumFmt(code: "0.000")
-        sheet[row, 1].fill = XlFill(patternFill: solidPattern("E4DFEC"))
-        
-        # X, Y, Z columns - alternate between green/white per joint
-        sheet[row, 2].value = t.translation[0]
-        sheet[row, 2].numFmt = XlNumFmt(code: "0.000")
-        sheet[row, 3].value = t.translation[1]
-        sheet[row, 3].numFmt = XlNumFmt(code: "0.000")
-        sheet[row, 4].value = t.translation[2]
-        sheet[row, 4].numFmt = XlNumFmt(code: "0.000")
-        if jointColor:
-          sheet[row, 2].fill = XlFill(patternFill: solidPattern("E2EFDA"))
-          sheet[row, 3].fill = XlFill(patternFill: solidPattern("E2EFDA"))
-          sheet[row, 4].fill = XlFill(patternFill: solidPattern("E2EFDA"))
-        row.inc
-    
-    row.inc
-    
-    # Section 2: Rotations
-    sheet[row, 0].value = "ROTATIONS"
-    rng = sheet.range((row, 0), (row, 5))
-    rng.merge()
-    rng.fill = XlFill(patternFill: solidPattern("FFE699"))
-    rng.font = XlFont(bold: true, size: 12.0)
-    rng.alignment = XlAlignment(horizontal: "center")
-    row.inc
-    
-    sheet[row, 0].value = "JointID"
-    sheet[row, 1].value = "Timestamp"
-    sheet[row, 2].value = "X"
-    sheet[row, 3].value = "Y"
-    sheet[row, 4].value = "Z"
-    sheet[row, 5].value = "W"
-    sheet.row(row).fill = XlFill(patternFill: solidPattern("FFF2CC"))
-    sheet.row(row).font = XlFont(bold: true)
-    row.inc
-    
-    lastJointId = -1
-    jointColor = false
-    for jointId, transforms in anim.rotations.pairs():
-      if jointId != lastJointId:
-        jointColor = not jointColor
-        lastJointId = jointId
-      for t in transforms:
-        # JointID column - light blue
-        sheet[row, 0].value = jointId
-        sheet[row, 0].fill = XlFill(patternFill: solidPattern("DDEBF7"))
-        
-        # Timestamp column - light purple
-        sheet[row, 1].value = t.timestamp
-        sheet[row, 1].numFmt = XlNumFmt(code: "0.000")
-        sheet[row, 1].fill = XlFill(patternFill: solidPattern("E4DFEC"))
-        
-        # X, Y, Z, W columns - alternate yellow/white per joint
-        sheet[row, 2].value = t.rotation[0]
-        sheet[row, 2].numFmt = XlNumFmt(code: "0.000")
-        sheet[row, 3].value = t.rotation[1]
-        sheet[row, 3].numFmt = XlNumFmt(code: "0.000")
-        sheet[row, 4].value = t.rotation[2]
-        sheet[row, 4].numFmt = XlNumFmt(code: "0.000")
-        sheet[row, 5].value = t.rotation[3]
-        sheet[row, 5].numFmt = XlNumFmt(code: "0.000")
-        if jointColor:
-          sheet[row, 2].fill = XlFill(patternFill: solidPattern("FFF2CC"))
-          sheet[row, 3].fill = XlFill(patternFill: solidPattern("FFF2CC"))
-          sheet[row, 4].fill = XlFill(patternFill: solidPattern("FFF2CC"))
-          sheet[row, 5].fill = XlFill(patternFill: solidPattern("FFF2CC"))
-        row.inc
-    
-    row.inc
-    
-    # Section 3: Final Matrices at t=0
-    sheet[row, 0].value = "FINAL JOINT MATRICES (t=0)"
-    rng = sheet.range((row, 0), (row, 17))
-    rng.merge()
-    rng.fill = XlFill(patternFill: solidPattern("F4B084"))
-    rng.font = XlFont(bold: true, size: 12.0)
-    rng.alignment = XlAlignment(horizontal: "center")
-    row.inc
-    
-    sheet[row, 0].value = "JointID"
-    sheet[row, 1].value = "JointName"
-    for k in 0..15: sheet[row, 2+k].value = &"M{k}"
-    sheet.row(row).fill = XlFill(patternFill: solidPattern("FCE4D6"))
-    sheet.row(row).font = XlFont(bold: true)
-    row.inc
-    
-    var matrices: array[MAX_NUM_JOINTS, Mat4]
-    anim.jointMatrices(0.0, animComp.skeletonRoot, IDENTMAT4, IDENTMAT4, matrices)
-    writeJointMatrices(sheet, row, animComp.skeletonRoot, matrices)
-    
-    row = row + animComp.skeletonRoot.countJoints() + 1
-    
-    # Section 4: Intermediate Matrices at t=0
-    sheet[row, 0].value = "INTERMEDIATE MATRICES (t=0)"
-    rng = sheet.range((row, 0), (row, 81))
-    rng.merge()
-    rng.fill = XlFill(patternFill: solidPattern("D9D9D9"))
-    rng.font = XlFont(bold: true, size: 12.0)
-    rng.alignment = XlAlignment(horizontal: "center")
-    row.inc
-    
-    sheet[row, 0].value = "JointID"
-    sheet[row, 1].value = "Name"
-    for k in 0..15: sheet[row, 2+k].value = &"JTrans{k}"
-    for k in 0..15: sheet[row, 18+k].value = &"LocAnim{k}"
-    for k in 0..15: sheet[row, 34+k].value = &"Bind{k}"
-    for k in 0..15: sheet[row, 50+k].value = &"Anim{k}"
-    for k in 0..15: sheet[row, 66+k].value = &"Final{k}"
-    sheet.row(row).fill = XlFill(patternFill: solidPattern("EDEDED"))
-    sheet.row(row).font = XlFont(bold: true)
-    row.inc
-    
-    writeIntermediateMatrices(sheet, row, anim, animComp.skeletonRoot, 0.0, IDENTMAT4, IDENTMAT4)
-    
-    # Auto-size columns
-    for col in 0..5:
-      sheet.col(col).width = 12
-    
-    # Create second sheet: Bone-centric view
-    var boneName = animName & "_Bones"
-    if boneName.len > 31: boneName = animName[0..24] & "_Bones"
-    var boneSheet = workbook.add(boneName)
-    row = 0
-    writeBoneCentricData(boneSheet, row, anim, animComp.skeletonRoot, IDENTMAT4, IDENTMAT4)
-    
-    # Auto-size columns for bone sheet
-    for col in 0..15:
-      boneSheet.col(col).width = 12
+  # Find and process only ANM_ctu1wal0
+  var targetAnim: Option[Animation] = none(Animation)
+  for anim in animComp.animations:
+    if anim.name == "ANM_ctu1wal0":
+      targetAnim = some(anim)
+      break
+  
+  if targetAnim.isNone():
+    echo "Animation 'ANM_ctu1wal0' not found"
+    quit(1)
+  
+  var anim = targetAnim.get()
+  var animName = anim.name
+  if animName.len > 31: animName = animName[0..30]
+  
+  var sheet = workbook.add(animName)
+  row = 0
+  
+  # Section 1: Translations
+  sheet[row, 0].value = "TRANSLATIONS"
+  var rng = sheet.range((row, 0), (row, 4))
+  rng.merge()
+  rng.fill = XlFill(patternFill: solidPattern("C6EFCE"))
+  rng.font = XlFont(bold: true, size: 12.0)
+  rng.alignment = XlAlignment(horizontal: "center")
+  row.inc
+  
+  sheet[row, 0].value = "JointID"
+  sheet[row, 1].value = "Timestamp"
+  sheet[row, 2].value = "X"
+  sheet[row, 3].value = "Y"
+  sheet[row, 4].value = "Z"
+  sheet.row(row).fill = XlFill(patternFill: solidPattern("E2EFDA"))
+  sheet.row(row).font = XlFont(bold: true)
+  row.inc
+  
+  var lastJointId = -1
+  var jointColor = false
+  for jointId, transforms in anim.translations.pairs():
+    if jointId != lastJointId:
+      jointColor = not jointColor
+      lastJointId = jointId
+    for t in transforms:
+      # JointID column - light blue to distinguish metadata
+      sheet[row, 0].value = jointId
+      sheet[row, 0].fill = XlFill(patternFill: solidPattern("DDEBF7"))
+      
+      # Timestamp column - light purple for time data
+      sheet[row, 1].value = t.timestamp
+      sheet[row, 1].numFmt = XlNumFmt(code: "0.000")
+      sheet[row, 1].fill = XlFill(patternFill: solidPattern("E4DFEC"))
+      
+      # X, Y, Z columns - alternate between green/white per joint
+      sheet[row, 2].value = t.translation[0]
+      sheet[row, 2].numFmt = XlNumFmt(code: "0.000")
+      sheet[row, 3].value = t.translation[1]
+      sheet[row, 3].numFmt = XlNumFmt(code: "0.000")
+      sheet[row, 4].value = t.translation[2]
+      sheet[row, 4].numFmt = XlNumFmt(code: "0.000")
+      if jointColor:
+        sheet[row, 2].fill = XlFill(patternFill: solidPattern("E2EFDA"))
+        sheet[row, 3].fill = XlFill(patternFill: solidPattern("E2EFDA"))
+        sheet[row, 4].fill = XlFill(patternFill: solidPattern("E2EFDA"))
+      row.inc
+  
+  row.inc
+  
+  # Section 2: Rotations
+  sheet[row, 0].value = "ROTATIONS"
+  rng = sheet.range((row, 0), (row, 5))
+  rng.merge()
+  rng.fill = XlFill(patternFill: solidPattern("FFE699"))
+  rng.font = XlFont(bold: true, size: 12.0)
+  rng.alignment = XlAlignment(horizontal: "center")
+  row.inc
+  
+  sheet[row, 0].value = "JointID"
+  sheet[row, 1].value = "Timestamp"
+  sheet[row, 2].value = "X"
+  sheet[row, 3].value = "Y"
+  sheet[row, 4].value = "Z"
+  sheet[row, 5].value = "W"
+  sheet.row(row).fill = XlFill(patternFill: solidPattern("FFF2CC"))
+  sheet.row(row).font = XlFont(bold: true)
+  row.inc
+  
+  lastJointId = -1
+  jointColor = false
+  for jointId, transforms in anim.rotations.pairs():
+    if jointId != lastJointId:
+      jointColor = not jointColor
+      lastJointId = jointId
+    for t in transforms:
+      # JointID column - light blue
+      sheet[row, 0].value = jointId
+      sheet[row, 0].fill = XlFill(patternFill: solidPattern("DDEBF7"))
+      
+      # Timestamp column - light purple
+      sheet[row, 1].value = t.timestamp
+      sheet[row, 1].numFmt = XlNumFmt(code: "0.000")
+      sheet[row, 1].fill = XlFill(patternFill: solidPattern("E4DFEC"))
+      
+      # X, Y, Z, W columns - alternate yellow/white per joint
+      sheet[row, 2].value = t.rotation[0]
+      sheet[row, 2].numFmt = XlNumFmt(code: "0.000")
+      sheet[row, 3].value = t.rotation[1]
+      sheet[row, 3].numFmt = XlNumFmt(code: "0.000")
+      sheet[row, 4].value = t.rotation[2]
+      sheet[row, 4].numFmt = XlNumFmt(code: "0.000")
+      sheet[row, 5].value = t.rotation[3]
+      sheet[row, 5].numFmt = XlNumFmt(code: "0.000")
+      if jointColor:
+        sheet[row, 2].fill = XlFill(patternFill: solidPattern("FFF2CC"))
+        sheet[row, 3].fill = XlFill(patternFill: solidPattern("FFF2CC"))
+        sheet[row, 4].fill = XlFill(patternFill: solidPattern("FFF2CC"))
+        sheet[row, 5].fill = XlFill(patternFill: solidPattern("FFF2CC"))
+      row.inc
+  
+  row.inc
+  
+  # Section 3: Final Matrices at t=0
+  sheet[row, 0].value = "FINAL JOINT MATRICES (t=0)"
+  rng = sheet.range((row, 0), (row, 17))
+  rng.merge()
+  rng.fill = XlFill(patternFill: solidPattern("F4B084"))
+  rng.font = XlFont(bold: true, size: 12.0)
+  rng.alignment = XlAlignment(horizontal: "center")
+  row.inc
+  
+  sheet[row, 0].value = "JointID"
+  sheet[row, 1].value = "JointName"
+  for k in 0..15: sheet[row, 2+k].value = &"M{k}"
+  sheet.row(row).fill = XlFill(patternFill: solidPattern("FCE4D6"))
+  sheet.row(row).font = XlFont(bold: true)
+  row.inc
+  
+  var matrices: array[MAX_NUM_JOINTS, Mat4]
+  anim.jointMatrices(0.0, animComp.skeletonRoot, IDENTMAT4, IDENTMAT4, matrices)
+  writeJointMatrices(sheet, row, animComp.skeletonRoot, matrices)
+  
+  row = row + animComp.skeletonRoot.countJoints() + 1
+  
+  # Section 4: Inverse Bind Matrices
+  sheet[row, 0].value = "INVERSE BIND MATRICES"
+  rng = sheet.range((row, 0), (row, 17))
+  rng.merge()
+  rng.fill = XlFill(patternFill: solidPattern("C9DAF8"))
+  rng.font = XlFont(bold: true, size: 12.0)
+  rng.alignment = XlAlignment(horizontal: "center")
+  row.inc
+  
+  sheet[row, 0].value = "JointID"
+  sheet[row, 1].value = "JointName"
+  for k in 0..15: sheet[row, 2+k].value = &"IBM{k}"
+  sheet.row(row).fill = XlFill(patternFill: solidPattern("D9EAD3"))
+  sheet.row(row).font = XlFont(bold: true)
+  row.inc
+  
+  writeInverseBindMatrices(sheet, row, animComp.skeletonRoot)
+  
+  row = row + animComp.skeletonRoot.countJoints() + 1
+  
+  # Section 5: Intermediate Matrices at t=0
+  sheet[row, 0].value = "INTERMEDIATE MATRICES (t=0)"
+  rng = sheet.range((row, 0), (row, 81))
+  rng.merge()
+  rng.fill = XlFill(patternFill: solidPattern("D9D9D9"))
+  rng.font = XlFont(bold: true, size: 12.0)
+  rng.alignment = XlAlignment(horizontal: "center")
+  row.inc
+  
+  sheet[row, 0].value = "JointID"
+  sheet[row, 1].value = "Name"
+  for k in 0..15: sheet[row, 2+k].value = &"JTrans{k}"
+  for k in 0..15: sheet[row, 18+k].value = &"LocAnim{k}"
+  for k in 0..15: sheet[row, 34+k].value = &"Bind{k}"
+  for k in 0..15: sheet[row, 50+k].value = &"Anim{k}"
+  for k in 0..15: sheet[row, 66+k].value = &"Final{k}"
+  sheet.row(row).fill = XlFill(patternFill: solidPattern("EDEDED"))
+  sheet.row(row).font = XlFont(bold: true)
+  row.inc
+  
+  writeIntermediateMatrices(sheet, row, anim, animComp.skeletonRoot, 0.0, IDENTMAT4, IDENTMAT4)
+  
+  # Auto-size columns
+  for col in 0..5:
+    sheet.col(col).width = 12
+  
+  # Create second sheet: Bone-centric view
+  var boneName = animName & "_Bones"
+  if boneName.len > 31: boneName = animName[0..24] & "_Bones"
+  var boneSheet = workbook.add(boneName)
+  row = 0
+  writeBoneCentricData(boneSheet, row, anim, animComp.skeletonRoot, IDENTMAT4, IDENTMAT4)
+  
+  # Auto-size columns for bone sheet
+  for col in 0..15:
+    boneSheet.col(col).width = 12
   
   workbook.save("animation_dump.xlsx")
-  echo &"Animation data dumped to animation_dump.xlsx ({animComp.animations.len} animations, first 3 processed)"
+  echo "Animation data dumped to animation_dump.xlsx (animation: ANM_ctu1wal0)"

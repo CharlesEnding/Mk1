@@ -3,4 +3,7 @@ drafts/
 run
 mk1.sublime-workspace
 mk1.sublime-project
-tools/
+tools/hackreader
+tools/particles
+tools/template
+tools/viewer
